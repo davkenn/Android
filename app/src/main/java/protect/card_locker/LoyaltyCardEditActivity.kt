@@ -1961,7 +1961,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         const val BUNDLE_UPDATE: String = "update"
         const val BUNDLE_OPEN_SET_ICON_MENU: String = "openSetIconMenu"
         const val BUNDLE_ADDGROUP: String = "addGroup"
-
+@JvmStatic
         fun formatDateField(context: Context, textField: EditText, date: Date?) {
             textField.tag = date
 
