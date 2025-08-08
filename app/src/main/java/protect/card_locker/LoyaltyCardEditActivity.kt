@@ -1324,7 +1324,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
 
-            val cardOptions = LinkedHashMap<String?, Callable<Void?>?>()
+            val cardOptions = LinkedHashMap<String, Callable<Void>>()
             if (currentImage != null && v.id != R.id.thumbnail) {
                 cardOptions.put(getString(R.string.removeImage), Callable {
                     setCardImage(imageLocationType, targetView, null, true)
@@ -1347,21 +1347,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             cardOptions.put(getString(R.string.takePhoto), Callable {
                 val permissionRequestType: Int = when (v.id) {
-                    R.id.frontImageHolder -> {
-                        PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
-                    }
-
-                    R.id.backImageHolder -> {
-                        PERMISSION_REQUEST_CAMERA_IMAGE_BACK
-                    }
-
-                    R.id.thumbnail -> {
-                        PERMISSION_REQUEST_CAMERA_IMAGE_ICON
-                    }
-
-                    else -> {
-                        throw IllegalArgumentException("Unknown ID type " + v.id)
-                    }
+                    R.id.frontImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
+                    R.id.backImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_BACK
+                    R.id.thumbnail -> PERMISSION_REQUEST_CAMERA_IMAGE_ICON
+                    else -> throw IllegalArgumentException("Unknown ID type " + v.id)
                 }
 
                 PermissionUtils.requestCameraPermission(
@@ -1373,21 +1362,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             cardOptions.put(getString(R.string.addFromImage), Callable {
                 val permissionRequestType: Int = when (v.id) {
-                    R.id.frontImageHolder -> {
-                        PERMISSION_REQUEST_STORAGE_IMAGE_FRONT
-                    }
-
-                    R.id.backImageHolder -> {
-                        PERMISSION_REQUEST_STORAGE_IMAGE_BACK
-                    }
-
-                    R.id.thumbnail -> {
-                        PERMISSION_REQUEST_STORAGE_IMAGE_ICON
-                    }
-
-                    else -> {
-                        throw IllegalArgumentException("Unknown ID type ${v.id}")
-                    }
+                    R.id.frontImageHolder -> PERMISSION_REQUEST_STORAGE_IMAGE_FRONT
+                    R.id.backImageHolder -> PERMISSION_REQUEST_STORAGE_IMAGE_BACK
+                    R.id.thumbnail -> PERMISSION_REQUEST_STORAGE_IMAGE_ICON
+                    else -> throw IllegalArgumentException("Unknown ID type ${v.id}")
                 }
 
                 PermissionUtils.requestStorageReadPermission(
@@ -1439,7 +1417,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 .setItems(
                     cardOptions.keys.toTypedArray<CharSequence?>()
                 ) { dialog: DialogInterface?, which: Int ->
-                    val callables: MutableIterator<Callable<Void?>> =
+                    val callables: Iterator<Callable<Void>> =
                         cardOptions.values.iterator()
                     var callable = callables.next()
 
