@@ -96,10 +96,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         LoyaltyCardEditActivity::class.java.simpleName + "_crop_image.png"
     private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
 
-    var thumbnail: ImageView? = null
-    var thumbnailEditIcon: ImageView? = null
-    var storeFieldEdit: EditText? = null
-    var noteFieldEdit: EditText? = null
     var groupsChips: ChipGroup? = null
     var validFromField: AutoCompleteTextView? = null
     var expiryField: AutoCompleteTextView? = null
@@ -301,11 +297,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             currencies.put(currency.symbol, currency)
             currencySymbols.put(currency.currencyCode, currency.symbol)
         }
-
-        thumbnail = binding.thumbnail
-        thumbnailEditIcon = binding.thumbnailEditIcon
-        storeFieldEdit = binding.storeNameEdit
-        noteFieldEdit = binding.noteEdit
         groupsChips = binding.groupChips
         validFromField = binding.validFromField
         expiryField = binding.expiryField
@@ -325,21 +316,21 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         enterButton = binding.enterButton
 
-        storeFieldEdit!!.addTextChangedListener(object : SimpleTextWatcher() {
+        binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val storeName = s.toString().trim { it <= ' ' }
                 setLoyaltyCardStore(storeName)
                 generateIcon(storeName)
 
                 if (storeName.isEmpty()) {
-                    storeFieldEdit!!.error = getString(R.string.field_must_not_be_empty)
+                    binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
                 } else {
-                    storeFieldEdit!!.error = null
+                    binding.storeNameEdit.error = null
                 }
             }
         })
 
-        noteFieldEdit!!.addTextChangedListener(object : SimpleTextWatcher() {
+        binding.noteEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 setLoyaltyCardNote(s.toString())
             }
@@ -836,8 +827,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         val hadChanges = viewModel.hasChanged
 
-        storeFieldEdit!!.setText(viewModel.loyaltyCard.store)
-        noteFieldEdit!!.setText(viewModel.loyaltyCard.note)
+        binding.storeNameEdit.setText(viewModel.loyaltyCard.store)
+        binding.noteEdit.setText(viewModel.loyaltyCard.note)
         formatDateField(this, validFromField!!, viewModel.loyaltyCard.validFrom)
         formatDateField(this, expiryField!!, viewModel.loyaltyCard.expiry)
         cardIdFieldView!!.text = viewModel.loyaltyCard.cardId
@@ -950,13 +941,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         saveButton.setOnClickListener { v: View? -> doSave() }
         saveButton.bringToFront()
 
-        generateIcon(storeFieldEdit!!.text.toString().trim { it <= ' ' })
+        generateIcon(binding.storeNameEdit.text.toString().trim { it <= ' ' })
 
         val headerColor = viewModel.loyaltyCard.headerColor
         if (headerColor != null) {
-            thumbnail!!.setOnClickListener(ChooseCardImage())
-            thumbnailEditIcon!!.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-            thumbnailEditIcon!!.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
+            binding.thumbnail.setOnClickListener(ChooseCardImage())
+            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
+            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
         }
 
         onResuming = false
@@ -966,12 +957,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // long-pressed in the view activity
         if (viewModel.openSetIconMenu) {
             viewModel.openSetIconMenu = false
-            thumbnail!!.callOnClick()
+            binding.thumbnail.callOnClick()
         }
     }
 
     protected fun setThumbnailImage(bitmap: Bitmap?) {
-        setCardImage(ImageLocationType.icon, thumbnail!!, bitmap, false)
+        setCardImage(ImageLocationType.icon, binding.thumbnail, bitmap, false)
 
         if (bitmap != null) {
             val headerColor = Utils.getHeaderColorFromImage(
@@ -981,18 +972,23 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             setLoyaltyCardHeaderColor(headerColor)
 
-            thumbnail!!.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
+            binding.thumbnail.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
 
-            thumbnailEditIcon!!.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-            thumbnailEditIcon!!.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
+            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
+            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
         } else {
-            generateIcon(storeFieldEdit!!.text.toString().trim { it <= ' ' })
+            generateIcon(binding.storeNameEdit.text.toString().trim { it <= ' ' })
 
             val headerColor = viewModel.loyaltyCard.headerColor
 
             if (headerColor != null) {
-                thumbnailEditIcon!!.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-                thumbnailEditIcon!!.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
+                binding.thumbnailEditIcon.setBackgroundColor(
+                    if (Utils.needsDarkForeground(
+                            headerColor
+                        )
+                    ) Color.BLACK else Color.WHITE
+                )
+                binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
             }
         }
     }
@@ -1007,12 +1003,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ImageLocationType.icon -> {
                 viewModel.loyaltyCard.setImageThumbnail(bitmap, null)
             }
+
             ImageLocationType.front -> {
                 viewModel.loyaltyCard.setImageFront(bitmap, null)
             }
+
             ImageLocationType.back -> {
                 viewModel.loyaltyCard.setImageBack(bitmap, null)
             }
+
             else -> {
                 throw IllegalArgumentException("Unknown image type")
             }
@@ -1096,7 +1095,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         permissions: Array<String?>,
         grantResults: IntArray
     ) {
-        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        val granted =
+            grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
         var failureReason: Int? = null
 
         when (requestCode) {
@@ -1108,6 +1108,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 failureReason = R.string.cameraPermissionRequired
             }
+
             PERMISSION_REQUEST_CAMERA_IMAGE_BACK -> {
                 if (granted) {
                     takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_BACK)
@@ -1116,6 +1117,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 failureReason = R.string.cameraPermissionRequired
             }
+
             PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
                 if (granted) {
                     takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_ICON)
@@ -1124,6 +1126,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 failureReason = R.string.cameraPermissionRequired
             }
+
             PERMISSION_REQUEST_STORAGE_IMAGE_FRONT -> {
                 if (granted) {
                     selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_FRONT)
@@ -1132,6 +1135,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 failureReason = R.string.storageReadPermissionRequired
             }
+
             PERMISSION_REQUEST_STORAGE_IMAGE_BACK -> {
                 if (granted) {
                     selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_BACK)
@@ -1140,6 +1144,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 failureReason = R.string.storageReadPermissionRequired
             }
+
             PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
                 if (granted) {
                     selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_ICON)
@@ -1191,7 +1196,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun askBeforeQuitIfChanged() {
         if (!viewModel.hasChanged) {
             if (tempStoredOldBarcodeValue != null) {
-                askBarcodeChange(Runnable? { this.askBeforeQuitIfChanged() })
+                askBarcodeChange { this.askBeforeQuitIfChanged() }
                 return
             }
 
@@ -1300,17 +1305,20 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     imageLocationType = ImageLocationType.front
                     targetView = cardImageFront!!
                 }
+
                 R.id.backImageHolder -> {
                     currentImage = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.back
                     targetView = cardImageBack!!
                 }
+
                 R.id.thumbnail -> {
                     currentImage =
                         viewModel.loyaltyCard.getImageThumbnail(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.icon
-                    targetView = thumbnail!!
+                    targetView = binding.thumbnail
                 }
+
                 else -> {
                     throw IllegalArgumentException("Invalid IMAGE ID " + v.id)
                 }
@@ -1342,12 +1350,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     R.id.frontImageHolder -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
                     }
+
                     R.id.backImageHolder -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_BACK
                     }
+
                     R.id.thumbnail -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_ICON
                     }
+
                     else -> {
                         throw IllegalArgumentException("Unknown ID type " + v.id)
                     }
@@ -1365,12 +1376,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     R.id.frontImageHolder -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_FRONT
                     }
+
                     R.id.backImageHolder -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_BACK
                     }
+
                     R.id.thumbnail -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_ICON
                     }
+
                     else -> {
                         throw IllegalArgumentException("Unknown ID type ${v.id}")
                     }
@@ -1590,18 +1604,18 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         if (tempStoredOldBarcodeValue != null) {
-            askBarcodeChange(Runnable? { this.doSave() })
+            askBarcodeChange { this.doSave() }
             return
         }
 
         var hasError = false
 
         if (viewModel.loyaltyCard.store.isEmpty()) {
-            storeFieldEdit!!.error = getString(R.string.field_must_not_be_empty)
+            binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
 
             // Focus element
             selectTab(0)
-            storeFieldEdit!!.requestFocus()
+            binding.storeNameEdit.requestFocus()
 
             hasError = true
         }
@@ -1899,23 +1913,23 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         if (viewModel.loyaltyCard.getImageThumbnail(this) == null) {
-            thumbnail!!.setBackgroundColor(headerColor)
+            binding.thumbnail.setBackgroundColor(headerColor)
 
             val letterBitmap = Utils.generateIcon(this, store, headerColor)
 
             if (letterBitmap != null) {
-                thumbnail!!.setImageBitmap(letterBitmap.letterTile)
+                binding.thumbnail.setImageBitmap(letterBitmap.letterTile)
             } else {
-                thumbnail!!.setImageBitmap(null)
+                binding.thumbnail.setImageBitmap(null)
             }
         }
 
-        thumbnail!!.minimumWidth = thumbnail!!.height
+        binding.thumbnail.minimumWidth = binding.thumbnail.height
     }
 
     private fun showPart(part: String?) {
         if (tempStoredOldBarcodeValue != null) {
-            askBarcodeChange(Runnable? { showPart(part) })
+            askBarcodeChange{ showPart(part) }
             return
         }
 
@@ -1932,16 +1946,19 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 // Redraw barcode due to size change (Visibility.GONE sets it to 0)
                 generateBarcode()
             }
+
             getString(R.string.options) -> {
                 cardPart.visibility = View.GONE
                 optionsPart.visibility = View.VISIBLE
                 picturesPart.visibility = View.GONE
             }
+
             getString(R.string.photos) -> {
                 cardPart.visibility = View.GONE
                 optionsPart.visibility = View.GONE
                 picturesPart.visibility = View.VISIBLE
             }
+
             else -> {
                 throw UnsupportedOperationException()
             }
@@ -1986,17 +2003,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             if (date == null) {
                 val text = when (textField.id) {
-                    textField.id -> {
-                        context.getString(R.string.anyDate)
-                    }
-
-                    textField.id -> {
-                        context.getString(R.string.never)
-                    }
-
-                    else -> {
-                        throw IllegalArgumentException("Unknown textField Id " + textField.id)
-                    }
+                    R.id.validFromField -> context.getString(R.string.anyDate)
+                    R.id.expiryField -> context.getString(R.string.never)
+                    else -> throw IllegalArgumentException("Unknown textField Id " + textField.id)
                 }
                 textField.setText(text)
             } else {
