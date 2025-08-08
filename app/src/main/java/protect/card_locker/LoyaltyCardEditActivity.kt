@@ -1295,17 +1295,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             val targetView: ImageView
 
             when (v.id) {
-                v.id -> {
+                R.id.frontImageHolder -> {
                     currentImage = viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.front
                     targetView = cardImageFront!!
                 }
-                v.id -> {
+                R.id.backImageHolder -> {
                     currentImage = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.back
                     targetView = cardImageBack!!
                 }
-                v.id -> {
+                R.id.thumbnail -> {
                     currentImage =
                         viewModel.loyaltyCard.getImageThumbnail(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.icon
@@ -1339,13 +1339,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             cardOptions.put(getString(R.string.takePhoto), Callable {
                 val permissionRequestType: Int = when (v.id) {
-                    v.id -> {
+                    R.id.frontImageHolder -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
                     }
-                    v.id -> {
+                    R.id.backImageHolder -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_BACK
                     }
-                    v.id -> {
+                    R.id.thumbnail -> {
                         PERMISSION_REQUEST_CAMERA_IMAGE_ICON
                     }
                     else -> {
@@ -1362,13 +1362,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             cardOptions.put(getString(R.string.addFromImage), Callable {
                 val permissionRequestType: Int = when (v.id) {
-                    v.id -> {
+                    R.id.frontImageHolder -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_FRONT
                     }
-                    v.id -> {
+                    R.id.backImageHolder -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_BACK
                     }
-                    v.id -> {
+                    R.id.thumbnail -> {
                         PERMISSION_REQUEST_STORAGE_IMAGE_ICON
                     }
                     else -> {
@@ -1414,15 +1414,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             val titleResource: Int = when (v.id) {
-                v.id -> {
+                R.id.frontImageHolder -> {
                     R.string.setFrontImage
                 }
 
-                v.id -> {
+                R.id.backImageHolder -> {
                     R.string.setBackImage
                 }
 
-                v.id -> {
+                R.id.thumbnail -> {
                     R.string.setIcon
                 }
 
