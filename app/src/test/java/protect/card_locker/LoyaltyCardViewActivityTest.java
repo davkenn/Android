@@ -589,7 +589,7 @@ public class LoyaltyCardViewActivityTest {
 
         // A change was made
         shadowOf(activity).clickMenuItem(android.R.id.home);
-        assertEquals(true, activity.confirmExitDialog.isShowing());
+        assertEquals(true, activity.getConfirmExitDialog().isShowing());
         assertEquals(true, activity.viewModel.getHasChanged());
         assertEquals(false, activity.isFinishing());
 
@@ -712,7 +712,7 @@ public class LoyaltyCardViewActivityTest {
         assertEquals(false, activity.isFinishing());
         // A change was made
         shadowOf(activity).clickMenuItem(android.R.id.home);
-        assertEquals(true, activity.confirmExitDialog.isShowing());
+        assertEquals(true, activity.getConfirmExitDialog().isShowing());
         assertEquals(true, activity.viewModel.getHasChanged());
         assertEquals(false, activity.isFinishing());
 
