@@ -278,8 +278,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         setContentView(binding.getRoot())
         Utils.applyWindowInsetsAndFabOffset(binding.getRoot(), binding.fabSave)
 
-
-
         toolbar = binding.toolbar
         setSupportActionBar(toolbar)
         enableToolbarBackButton()
@@ -1443,7 +1441,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     override fun onColorSelected(dialogId: Int, color: Int) {
         // Save new colour
         setLoyaltyCardHeaderColor(color)
-
         // Unset image if set
         setThumbnailImage(null)
     }
