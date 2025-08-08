@@ -1428,21 +1428,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             val titleResource: Int = when (v.id) {
-                R.id.frontImageHolder -> {
-                    R.string.setFrontImage
-                }
-
-                R.id.backImageHolder -> {
-                    R.string.setBackImage
-                }
-
-                R.id.thumbnail -> {
-                    R.string.setIcon
-                }
-
-                else -> {
-                    throw IllegalArgumentException("Unknown ID type " + v.id)
-                }
+                R.id.frontImageHolder -> R.string.setFrontImage
+                R.id.backImageHolder -> R.string.setBackImage
+                R.id.thumbnail -> R.string.setIcon
+                else -> throw IllegalArgumentException("Unknown ID type " + v.id)
             }
 
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
