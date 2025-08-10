@@ -120,7 +120,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     var tempStoredOldBarcodeValue: String? = null
 
-    var onRestoring: Boolean = false
     var confirmExitDialog: AlertDialog? = null
 
     var validBalance: Boolean = true
@@ -266,7 +265,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     public override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        onRestoring = true
+        viewModel.onRestoring = true
         super.onRestoreInstanceState(savedInstanceState)
     }
 
@@ -350,7 +349,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         setMaterialDatePickerResultListener()
 
         balanceField!!.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
-            if (!hasFocus && !viewModel.onResuming && !onRestoring) {
+            if (!hasFocus && !viewModel.onResuming && !viewModel.onRestoring) {
                 if (balanceField!!.text.toString().isEmpty()) {
                     setLoyaltyCardBalance(BigDecimal.valueOf(0))
                 }
@@ -366,7 +365,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         balanceField!!.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (viewModel.onResuming || onRestoring) return
+                if (viewModel.onResuming || viewModel.onRestoring) return
                 try {
                     val balance =
                         Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
@@ -392,7 +391,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 setLoyaltyCardBalanceType(currency)
 
-                if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !onRestoring) {
+                if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !viewModel.onRestoring) {
                     balanceField!!.setText(
                         Utils.formatBalanceWithoutCurrencySymbol(
                             viewModel.loyaltyCard.balance,
@@ -947,7 +946,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         viewModel.onResuming = false
-        onRestoring = false
+        viewModel.onRestoring = false
 
         // Fake click on the edit icon to cause the set icon option to pop up if the icon was
         // long-pressed in the view activity
