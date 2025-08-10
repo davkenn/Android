@@ -96,9 +96,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         LoyaltyCardEditActivity::class.java.simpleName + "_crop_image.png"
     private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
 
-    var groupsChips: ChipGroup? = null
-    var validFromField: AutoCompleteTextView? = null
-    var expiryField: AutoCompleteTextView? = null
+    private lateinit var groupChips: ChipGroup
+    private lateinit var validFromField: AutoCompleteTextView
+    private lateinit var expiryField: AutoCompleteTextView
     var balanceField: EditText? = null
     var balanceCurrencyField: AutoCompleteTextView? = null
     var cardIdFieldView: TextView? = null
@@ -295,7 +295,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             currencies.put(currency.symbol, currency)
             currencySymbols.put(currency.currencyCode, currency.symbol)
         }
-        groupsChips = binding.groupChips
+        groupChips = binding.groupChips
         validFromField = binding.validFromField
         expiryField = binding.expiryField
         balanceField = binding.balanceField
@@ -335,14 +335,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         })
 
         addDateFieldTextChangedListener(
-            validFromField!!,
+            validFromField,
             R.string.anyDate,
             R.string.chooseValidFromDate,
             LoyaltyCardField.validFrom
         )
 
         addDateFieldTextChangedListener(
-            expiryField!!,
+            expiryField,
             R.string.never,
             R.string.chooseExpiryDate,
             LoyaltyCardField.expiry
@@ -805,7 +805,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun requestedIcon(): Boolean {
         val requestedImageType = viewModel.requestedImageType
-
         return requestedImageType == Utils.CARD_IMAGE_FROM_CAMERA_ICON || requestedImageType == Utils.CARD_IMAGE_FROM_FILE_ICON
     }
 
@@ -827,8 +826,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.setText(viewModel.loyaltyCard.store)
         binding.noteEdit.setText(viewModel.loyaltyCard.note)
-        formatDateField(this, validFromField!!, viewModel.loyaltyCard.validFrom)
-        formatDateField(this, expiryField!!, viewModel.loyaltyCard.expiry)
+        formatDateField(this, validFromField, viewModel.loyaltyCard.validFrom)
+        formatDateField(this, expiryField, viewModel.loyaltyCard.expiry)
         cardIdFieldView!!.text = viewModel.loyaltyCard.cardId
         val barcodeId = viewModel.loyaltyCard.barcodeId
         barcodeIdField!!.setText(
@@ -858,21 +857,21 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         validBalance = true
         Log.d(TAG, "Setting balance to $balance")
 
-        if (groupsChips!!.isEmpty()) {
+        if (groupChips.isEmpty()) {
             val existingGroups = DBHelper.getGroups(mDatabase)
 
             val loyaltyCardGroups =
                 DBHelper.getLoyaltyCardGroups(mDatabase, viewModel.loyaltyCardId)
 
             if (existingGroups.isEmpty()) {
-                groupsChips!!.visibility = View.GONE
+                groupChips.visibility = View.GONE
             } else {
-                groupsChips!!.visibility = View.VISIBLE
+                groupChips.visibility = View.VISIBLE
             }
 
             for (group in DBHelper.getGroups(mDatabase)) {
                 val chipChoiceBinding = LayoutChipChoiceBinding
-                    .inflate(LayoutInflater.from(groupsChips!!.context), groupsChips, false)
+                    .inflate(LayoutInflater.from(groupChips.context), groupChips, false)
                 val chip = chipChoiceBinding.getRoot()
                 chip.text = group._id
                 chip.tag = group
@@ -894,7 +893,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     false
                 }
 
-                groupsChips!!.addView(chip)
+                groupChips.addView(chip)
             }
         }
 
@@ -1050,8 +1049,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     showDatePicker(
                         loyaltyCardField,
                         dateField.tag as Date?,  // if the expiry date is being set, set date picker's minDate to the 'valid from' date
-                        if (loyaltyCardField == LoyaltyCardField.expiry) validFromField!!.tag as Date? else null,  // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
-                        if (loyaltyCardField == LoyaltyCardField.validFrom) expiryField!!.tag as Date? else null
+                        if (loyaltyCardField == LoyaltyCardField.expiry) validFromField.tag as Date? else null,  // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
+                        if (loyaltyCardField == LoyaltyCardField.validFrom) expiryField.tag as Date? else null
                     )
                 }
             }
@@ -1526,8 +1525,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             when (tempLoyaltyCardField) {
                 LoyaltyCardField.validFrom -> {
                     formatDateField(
-                        this@LoyaltyCardEditActivity,
-                        validFromField!!,
+                        this,
+                        validFromField,
                         newDate
                     )
                     setLoyaltyCardValidFrom(newDate)
@@ -1536,7 +1535,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 LoyaltyCardField.expiry -> {
                     formatDateField(
                         this@LoyaltyCardEditActivity,
-                        expiryField!!,
+                        expiryField,
                         newDate
                     )
                     setLoyaltyCardExpiry(newDate)
@@ -1612,8 +1611,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         val selectedGroups: MutableList<Group?> = ArrayList()
 
-        for (chipId in groupsChips!!.checkedChipIds) {
-            val chip = groupsChips!!.findViewById<Chip>(chipId)
+        for (chipId in groupChips.checkedChipIds) {
+            val chip = groupChips.findViewById<Chip>(chipId)
             selectedGroups.add(chip.tag as Group?)
         }
 
