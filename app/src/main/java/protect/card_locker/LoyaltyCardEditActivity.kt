@@ -119,7 +119,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var mDatabase: SQLiteDatabase? = null
 
     var tempStoredOldBarcodeValue: String? = null
-    var onResuming: Boolean = false
+
     var onRestoring: Boolean = false
     var confirmExitDialog: AlertDialog? = null
 
@@ -350,7 +350,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         setMaterialDatePickerResultListener()
 
         balanceField!!.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
-            if (!hasFocus && !onResuming && !onRestoring) {
+            if (!hasFocus && !viewModel.onResuming && !onRestoring) {
                 if (balanceField!!.text.toString().isEmpty()) {
                     setLoyaltyCardBalance(BigDecimal.valueOf(0))
                 }
@@ -366,7 +366,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         balanceField!!.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (onResuming || onRestoring) return
+                if (viewModel.onResuming || onRestoring) return
                 try {
                     val balance =
                         Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
@@ -392,7 +392,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 setLoyaltyCardBalanceType(currency)
 
-                if (viewModel.loyaltyCard.balance != null && !onResuming && !onRestoring) {
+                if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !onRestoring) {
                     balanceField!!.setText(
                         Utils.formatBalanceWithoutCurrencySymbol(
                             viewModel.loyaltyCard.balance,
@@ -441,7 +441,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         cardIdFieldView!!.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                if (viewModel.initDone && !onResuming) {
+                if (viewModel.initDone && !viewModel.onResuming) {
                     if (tempStoredOldBarcodeValue == null) {
                         // We changed the card ID, save the current barcode ID in a temp
                         // variable and make sure to ask the user later if they also want to
@@ -813,7 +813,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         Log.i(TAG, "To view card: " + viewModel.loyaltyCardId)
 
-        onResuming = true
+        viewModel.onResuming = true
 
         if (viewModel.updateLoyaltyCard) {
             setTitle(R.string.editCardTitle)
@@ -946,7 +946,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
         }
 
-        onResuming = false
+        viewModel.onResuming = false
         onRestoring = false
 
         // Fake click on the edit icon to cause the set icon option to pop up if the icon was
