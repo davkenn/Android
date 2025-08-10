@@ -1812,8 +1812,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun generateBarcode() {
-        viewModel.taskHandler.flushTaskList(TaskHandler.TYPE.BARCODE, true, false, false)
-
+        viewModel.cancelBarcodeGeneration()
         val cardIdString =
             if (viewModel.loyaltyCard.barcodeId != null) viewModel.loyaltyCard.barcodeId else viewModel.loyaltyCard.cardId
         val barcodeFormat = viewModel.loyaltyCard.barcodeType
@@ -1846,7 +1845,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             true,
                             false
                         )
-                        viewModel.taskHandler.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
+
+                        viewModel.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
                     }
                 })
         } else {
@@ -1862,7 +1862,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 true,
                 false
             )
-            viewModel.taskHandler.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
+            viewModel.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
         }
     }
 
