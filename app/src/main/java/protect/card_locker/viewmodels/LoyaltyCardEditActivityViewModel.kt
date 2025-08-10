@@ -1,6 +1,7 @@
 package protect.card_locker.viewmodels
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineScope
@@ -17,7 +18,9 @@ import protect.card_locker.async.runSuspending
 
 
 class LoyaltyCardEditActivityViewModel : ViewModel() {
-
+    private companion object {
+        private const val TAG = "Catima"
+    }
     var initDone = false
     var onRestoring = false
     var onResuming = false
@@ -36,7 +39,7 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
             try {
                 callable.runSuspending()
             } catch (e: Exception) {
-
+                Log.e(TAG, "Barcode generation failed", e)
             }
         }
     }
