@@ -29,6 +29,9 @@ import org.robolectric.shadows.ShadowActivity
 import org.robolectric.shadows.ShadowLog
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_OPEN_SET_ICON_MENU
+import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_UPDATE
+import protect.card_locker.LoyaltyCardViewActivity.BUNDLE_ID
 import protect.card_locker.async.TaskHandler
 import java.lang.reflect.Method
 import kotlin.text.get
@@ -39,10 +42,6 @@ class LoyaltyCardEditActivityTest {
     private lateinit var mockTextView: TextView
     @Mock
     private lateinit var mockImageView: ImageView
-
-
-    private lateinit var shadowActivity: ShadowActivity
-
     private lateinit var context: android.content.Context
 
     @Before
@@ -119,10 +118,10 @@ class LoyaltyCardEditActivityTest {
 
     @Test
     fun testRequiredFieldsPresent() {
-        val activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java).create()
-        activityController.start().resume()
+    //    val activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java).create()
+      //  activityController.start().resume()
 
-        val activity = activityController.get()
+        val activity = buildActivity()
 
         assertNotNull(activity.findViewById<EditText>(R.id.storeNameEdit))
         assertNotNull(activity.findViewById<EditText>(R.id.noteEdit))
@@ -133,12 +132,9 @@ class LoyaltyCardEditActivityTest {
 
     @Test
     fun testTabLayoutExists() {
-        val activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java).create()
-        activityController.start().resume()
 
-        val activity = activityController.get()
+        val activity = buildActivity()
         val tabLayout = activity.findViewById<TabLayout>(R.id.tabs)
-
         assertNotNull(tabLayout)
         assertTrue(tabLayout.tabCount > 0)
     }
@@ -184,20 +180,13 @@ class LoyaltyCardEditActivityTest {
 
         @Test
         fun startWithUpdateMode_setsViewModelFlags() {
-            val intent = Intent().apply {
+
+            val activity = buildActivity {
                 putExtras(Bundle().apply {
                     putInt(LoyaltyCardEditActivity.BUNDLE_ID, 42)
-                    putBoolean(LoyaltyCardEditActivity.BUNDLE_UPDATE, true)
+                    putBoolean(BUNDLE_UPDATE, true)
                 })
             }
-            val activity = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java, intent)
-                .create()
-                .start()
-                .resume()
-                .visible()
-                .get()
-
-
             shadowOf(Looper.getMainLooper()).idle()
 
             assertTrue(activity.viewModel.updateLoyaltyCard)
@@ -206,19 +195,12 @@ class LoyaltyCardEditActivityTest {
 
         @Test
         fun startWithDuplicateMode_setsDuplicateFlag() {
-            val intent = Intent().apply {
-                putExtras(Bundle().apply {
-                    putInt(LoyaltyCardEditActivity.BUNDLE_ID, 99)
-                    putBoolean(LoyaltyCardEditActivity.BUNDLE_DUPLICATE_ID, true)
+
+            val activity = buildActivity { putExtras(Bundle().apply {
+                putInt(LoyaltyCardEditActivity.BUNDLE_ID, 99)
+                putBoolean(LoyaltyCardEditActivity.BUNDLE_DUPLICATE_ID, true)
                 })
             }
-            val activity = Robolectric
-                .buildActivity(LoyaltyCardEditActivity::class.java, intent)
-                .create()
-                .start()
-                .resume()
-                .visible()
-                .get()
 
             assertTrue(activity.viewModel.duplicateFromLoyaltyCardId)
             assertEquals(99, activity.viewModel.loyaltyCardId)
@@ -228,7 +210,7 @@ class LoyaltyCardEditActivityTest {
         fun startWithOpenSetIconMenu_showsIconMenuFlag() {
             val intent = Intent().apply {
                 putExtras(Bundle().apply {
-                    putBoolean(LoyaltyCardEditActivity.BUNDLE_OPEN_SET_ICON_MENU, true)
+                    putBoolean(BUNDLE_OPEN_SET_ICON_MENU, true)
                 })
             }
 
@@ -236,17 +218,31 @@ class LoyaltyCardEditActivityTest {
                 .buildActivity(LoyaltyCardEditActivity::class.java, intent)
                 .create()
 
-               // .visible()
-
             assertTrue(activity1.get().viewModel.openSetIconMenu)
             activity1.start().resume().visible()
-        //    context = activity1.applicationContext
-      //      mockTextView = TextView(activity)
-        //    mockImageView = ImageView(activity)
 
-//            shadowOf(Looper.getMainLooper()).idle()
-  //          assertTrue(activity1.viewModel.openSetIconMenu)
         }
+
+    @Test
+    fun startWithOpenSetIconMenu_showsIconMenuFlag2() {
+        val intent = Intent().apply {
+            putExtras(Bundle().apply {
+                putBoolean(BUNDLE_OPEN_SET_ICON_MENU, true)
+                putInt(BUNDLE_ID, 98)
+                    putBoolean(BUNDLE_UPDATE, true)
+
+            })
+        }
+
+        val activity1 = Robolectric
+            .buildActivity(LoyaltyCardEditActivity::class.java, intent)
+            .create()
+
+        assertTrue(activity1.get().viewModel.openSetIconMenu)
+        activity1.start().resume().visible()
+
+    }
+
 
         @Test
         fun startWithAddGroup_setsAddGroup() {
