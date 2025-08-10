@@ -1812,7 +1812,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun generateBarcode() {
-        viewModel.cancelBarcodeGeneration()
+
         val cardIdString =
             if (viewModel.loyaltyCard.barcodeId != null) viewModel.loyaltyCard.barcodeId else viewModel.loyaltyCard.cardId
         val barcodeFormat = viewModel.loyaltyCard.barcodeType

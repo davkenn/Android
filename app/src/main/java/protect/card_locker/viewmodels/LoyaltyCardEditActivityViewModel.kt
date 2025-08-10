@@ -3,7 +3,11 @@ package protect.card_locker.viewmodels
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeImageWriterTask
 import protect.card_locker.LoyaltyCard
@@ -14,6 +18,7 @@ import protect.card_locker.async.runSuspending
 
 class LoyaltyCardEditActivityViewModel : ViewModel() {
 
+    private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     var initDone = false
     var onRestoring = false
     var onResuming = false
@@ -25,15 +30,15 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
     fun executeTask(
         type: TaskHandler.TYPE, callable: BarcodeImageWriterTask
     ) {
-        val job = viewModelScope.launch {
+        if (type == TaskHandler.TYPE.BARCODE) {
+            cancelBarcodeGeneration()
+        }
+        barcodeGenerationJob = viewModelScope.launch {
             try {
                 callable.runSuspending()
             } catch (e: Exception) {
 
             }
-        }
-        if (type == TaskHandler.TYPE.BARCODE) {
-            barcodeGenerationJob = job
         }
     }
 
@@ -43,6 +48,10 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
         barcodeGenerationJob = null
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        viewModelScope.cancel()
+    }
     var addGroup: String? = null
     var openSetIconMenu: Boolean = false
     var loyaltyCardId: Int = 0
