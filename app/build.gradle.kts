@@ -134,14 +134,15 @@ dependencies {
     testImplementation("androidx.test:core:$androidXTestVersion")
     testImplementation("junit:junit:$junitVersion")
     testImplementation("org.robolectric:robolectric:4.15.1")
-
+    testImplementation ("org.mockito:mockito-core:5.18.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.0.0")
     androidTestImplementation("androidx.test:core:$androidXTestVersion")
     androidTestImplementation("junit:junit:$junitVersion")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:$androidXTestVersion")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-}
+
 
 tasks.register("copyRawResFiles", Copy::class) {
     from(
@@ -158,4 +159,4 @@ tasks.register("copyRawResFiles", Copy::class) {
             delete(layout.projectDirectory.file("src/main/res/raw/${fileName.lowercase()}.md"))
         }
     }
-}
+}}
