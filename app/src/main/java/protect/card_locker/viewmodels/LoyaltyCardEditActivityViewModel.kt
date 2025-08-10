@@ -18,7 +18,6 @@ import protect.card_locker.async.runSuspending
 
 class LoyaltyCardEditActivityViewModel : ViewModel() {
 
-    private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     var initDone = false
     var onRestoring = false
     var onResuming = false
@@ -48,10 +47,6 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
         barcodeGenerationJob = null
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        viewModelScope.cancel()
-    }
     var addGroup: String? = null
     var openSetIconMenu: Boolean = false
     var loyaltyCardId: Int = 0
