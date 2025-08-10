@@ -9,6 +9,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.isVisible
+import androidx.test.core.app.ApplicationProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.zxing.BarcodeFormat
@@ -33,8 +34,7 @@ import kotlin.text.get
 class LoyaltyCardEditActivityTest {
     private lateinit var mockTextView: TextView
     private lateinit var mockImageView: ImageView
-    private lateinit var activityController: org.robolectric.android.controller.ActivityController<LoyaltyCardEditActivity>
-    private lateinit var activity: LoyaltyCardEditActivity
+
     private lateinit var shadowActivity: ShadowActivity
 
     private lateinit var context: android.content.Context
@@ -42,12 +42,11 @@ class LoyaltyCardEditActivityTest {
     @Before
     fun setUp() {
         ShadowLog.stream = System.out
-        activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java)
-        activity = activityController.get()
-        context = activity.applicationContext
-        mockTextView = TextView(activity)
-        mockImageView = ImageView(activity)
-        shadowActivity = shadowOf(activity)
+
+        context = ApplicationProvider.getApplicationContext()
+     //   mockTextView = TextView(con)
+       // mockImageView = ImageView(activity)
+       // shadowActivity = shadowOf(activity)
     }
 
     @Test
