@@ -7,6 +7,10 @@ import protect.card_locker.LoyaltyCardField
 import protect.card_locker.async.TaskHandler
 
 class LoyaltyCardEditActivityViewModel : ViewModel() {
+
+    var initDone = false
+    var onRestoring = false
+    var onResuming = false
     var initialized: Boolean = false
     var hasChanged: Boolean = false
 

@@ -119,7 +119,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var mDatabase: SQLiteDatabase? = null
 
     var tempStoredOldBarcodeValue: String? = null
-    var initDone: Boolean = false
     var onResuming: Boolean = false
     var onRestoring: Boolean = false
     var confirmExitDialog: AlertDialog? = null
@@ -442,7 +441,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         cardIdFieldView!!.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                if (initDone && !onResuming) {
+                if (viewModel.initDone && !onResuming) {
                     if (tempStoredOldBarcodeValue == null) {
                         // We changed the card ID, save the current barcode ID in a temp
                         // variable and make sure to ask the user later if they also want to
@@ -921,8 +920,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         )
 
         // Initialization has finished
-        if (!initDone) {
-            initDone = true
+        if (!viewModel.initDone) {
+            viewModel.initDone = true
             viewModel.hasChanged = hadChanges
         }
 
