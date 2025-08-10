@@ -2,6 +2,7 @@ package protect.card_locker
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.os.Looper
 import android.view.View
 import android.widget.EditText
@@ -150,6 +151,93 @@ class LoyaltyCardEditActivityTest {
         // Should not throw exception
         assertTrue(true)
     }
+
+
+
+        @Test
+        fun startWithUpdateMode_setsViewModelFlags() {
+            val intent = Intent().apply {
+                putExtras(Bundle().apply {
+                    putInt(LoyaltyCardEditActivity.BUNDLE_ID, 42)
+                    putBoolean(LoyaltyCardEditActivity.BUNDLE_UPDATE, true)
+                })
+            }
+            val activity = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .visible()
+                .get()
+
+
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(activity.viewModel.updateLoyaltyCard)
+            assertEquals(42, activity.viewModel.loyaltyCardId)
+        }
+
+        @Test
+        fun startWithDuplicateMode_setsDuplicateFlag() {
+            val intent = Intent().apply {
+                putExtras(Bundle().apply {
+                    putInt(LoyaltyCardEditActivity.BUNDLE_ID, 99)
+                    putBoolean(LoyaltyCardEditActivity.BUNDLE_DUPLICATE_ID, true)
+                })
+            }
+            val activity = Robolectric
+                .buildActivity(LoyaltyCardEditActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .visible()
+                .get()
+
+            assertTrue(activity.viewModel.duplicateFromLoyaltyCardId)
+            assertEquals(99, activity.viewModel.loyaltyCardId)
+        }
+
+        @Test
+        fun startWithOpenSetIconMenu_showsIconMenuFlag() {
+            val intent = Intent().apply {
+                putExtras(Bundle().apply {
+                    putBoolean(LoyaltyCardEditActivity.BUNDLE_OPEN_SET_ICON_MENU, true)
+                })
+            }
+
+            val activity1 = Robolectric
+                .buildActivity(LoyaltyCardEditActivity::class.java, intent)
+                .create()
+
+               // .visible()
+
+            assertTrue(activity1.get().viewModel.openSetIconMenu)
+            activity1.start().resume().visible()
+        //    context = activity1.applicationContext
+      //      mockTextView = TextView(activity)
+        //    mockImageView = ImageView(activity)
+
+//            shadowOf(Looper.getMainLooper()).idle()
+  //          assertTrue(activity1.viewModel.openSetIconMenu)
+        }
+
+        @Test
+        fun startWithAddGroup_setsAddGroup() {
+            val groupName = "NewGroup"
+            val intent = Intent().apply {
+                putExtras(Bundle().apply {
+                    putString(LoyaltyCardEditActivity.BUNDLE_ADDGROUP, groupName)
+                })
+            }
+            val activity = Robolectric
+                .buildActivity(LoyaltyCardEditActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .visible()
+                .get()
+
+            assertEquals(groupName, activity.viewModel.addGroup)
+        }
 
 
 

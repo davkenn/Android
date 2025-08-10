@@ -273,25 +273,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel = ViewModelProvider(this)[LoyaltyCardEditActivityViewModel::class.java]
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
-        Utils.applyWindowInsetsAndFabOffset(binding.getRoot(), binding.fabSave)
-
-        toolbar = binding.toolbar
-        setSupportActionBar(toolbar)
-        enableToolbarBackButton()
-
-        mDatabase = DBHelper(this).writableDatabase
-
-        if (!viewModel.initialized) {
-            if (!extractIntentFields(intent)) {
-                return
-            }
-            viewModel.initialized = true
-        }
-
-        for (currency in Currency.getAvailableCurrencies()) {
-            currencies.put(currency.symbol, currency)
-            currencySymbols.put(currency.currencyCode, currency.symbol)
-        }
         groupChips = binding.groupChips
         validFromField = binding.validFromField
         expiryField = binding.expiryField
@@ -308,8 +289,32 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         cardImageBackHolder = binding.backImageHolder
         cardImageFront = binding.frontImage
         cardImageBack = binding.backImage
-
         enterButton = binding.enterButton
+        Utils.applyWindowInsetsAndFabOffset(binding.getRoot(), binding.fabSave)
+
+        toolbar = binding.toolbar
+        setSupportActionBar(toolbar)
+        enableToolbarBackButton()
+
+        mDatabase = DBHelper(this).writableDatabase
+
+        viewModel.openSetIconMenu = intent.getBooleanExtra(
+            BUNDLE_OPEN_SET_ICON_MENU,
+            false
+        )
+
+        if (!viewModel.initialized) {
+            if (!extractIntentFields(intent)) {
+                return
+            }
+            viewModel.initialized = true
+        }
+
+        for (currency in Currency.getAvailableCurrencies()) {
+            currencies.put(currency.symbol, currency)
+            currencySymbols.put(currency.currencyCode, currency.symbol)
+        }
+
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
