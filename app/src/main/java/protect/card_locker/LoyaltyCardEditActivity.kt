@@ -118,7 +118,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     var mDatabase: SQLiteDatabase? = null
 
-    var tempStoredOldBarcodeValue: String? = null
 
     var confirmExitDialog: AlertDialog? = null
 
@@ -441,13 +440,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         cardIdFieldView!!.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 if (viewModel.initDone && !viewModel.onResuming) {
-                    if (tempStoredOldBarcodeValue == null) {
+                    if (viewModel.tempStoredOldBarcodeValue == null) {
                         // We changed the card ID, save the current barcode ID in a temp
                         // variable and make sure to ask the user later if they also want to
                         // update the barcode ID
                         if (viewModel.loyaltyCard.barcodeId != null) {
                             // If it is not set to "same as Card ID", save as tempStoredOldBarcodeValue
-                            tempStoredOldBarcodeValue = barcodeIdField!!.text.toString()
+                            viewModel.tempStoredOldBarcodeValue = barcodeIdField!!.text.toString()
                         }
                     }
                 }
@@ -475,7 +474,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 if (s.toString() == getString(R.string.sameAsCardId)) {
                     // If the user manually changes the barcode again make sure we disable the
                     // request to update it to match the card id (if changed)
-                    tempStoredOldBarcodeValue = null
+                    viewModel.tempStoredOldBarcodeValue = null
 
                     setLoyaltyCardBarcodeId(null)
                 } else if (s.toString() == getString(R.string.setBarcodeId)) {
@@ -512,7 +511,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     ) { dialog: DialogInterface?, which: Int ->
                         // If the user manually changes the barcode again make sure we disable the
                         // request to update it to match the card id (if changed)
-                        tempStoredOldBarcodeValue = null
+                        viewModel.tempStoredOldBarcodeValue = null
                         barcodeIdField!!.setText(input.text)
                     }
                     builder.setNegativeButton(
@@ -1156,10 +1155,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun askBarcodeChange(callback: Runnable?) {
-        if (tempStoredOldBarcodeValue == cardIdFieldView!!.text.toString()) {
+        if (viewModel.tempStoredOldBarcodeValue == cardIdFieldView!!.text.toString()) {
             // They are the same, don't ask
             barcodeIdField!!.setText(R.string.sameAsCardId)
-            tempStoredOldBarcodeValue = null
+            viewModel.tempStoredOldBarcodeValue = null
 
             callback?.run()
 
@@ -1179,9 +1178,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 R.string.no
             ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
             .setOnDismissListener { dialogInterface: DialogInterface? ->
-                if (tempStoredOldBarcodeValue != null) {
-                    barcodeIdField!!.setText(tempStoredOldBarcodeValue)
-                    tempStoredOldBarcodeValue = null
+                if (viewModel.tempStoredOldBarcodeValue != null) {
+                    barcodeIdField!!.setText(viewModel.tempStoredOldBarcodeValue)
+                    viewModel.tempStoredOldBarcodeValue = null
                 }
                 callback?.run()
             }
@@ -1190,7 +1189,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun askBeforeQuitIfChanged() {
         if (!viewModel.hasChanged) {
-            if (tempStoredOldBarcodeValue != null) {
+            if (viewModel.tempStoredOldBarcodeValue != null) {
                 askBarcodeChange { this.askBeforeQuitIfChanged() }
                 return
             }
@@ -1564,7 +1563,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
-        if (tempStoredOldBarcodeValue != null) {
+        if (viewModel.tempStoredOldBarcodeValue != null) {
             askBarcodeChange { this.doSave() }
             return
         }
@@ -1889,7 +1888,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun showPart(part: String?) {
-        if (tempStoredOldBarcodeValue != null) {
+        if (viewModel.tempStoredOldBarcodeValue != null) {
             askBarcodeChange{ showPart(part) }
             return
         }

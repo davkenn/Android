@@ -21,6 +21,8 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
     private companion object {
         private const val TAG = "Catima"
     }
+    var tempStoredOldBarcodeValue: String? = null
+
     var initDone = false
     var onRestoring = false
     var onResuming = false
