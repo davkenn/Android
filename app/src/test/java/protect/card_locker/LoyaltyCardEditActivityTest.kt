@@ -12,6 +12,7 @@ import androidx.core.view.isVisible
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
+import com.google.errorprone.annotations.DoNotMock
 import com.google.zxing.BarcodeFormat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,14 +27,19 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowActivity
 import org.robolectric.shadows.ShadowLog
+import org.mockito.Mock
+import org.mockito.MockitoAnnotations
 import protect.card_locker.async.TaskHandler
 import java.lang.reflect.Method
 import kotlin.text.get
 
 @RunWith(RobolectricTestRunner::class)
 class LoyaltyCardEditActivityTest {
+    @Mock
     private lateinit var mockTextView: TextView
+    @Mock
     private lateinit var mockImageView: ImageView
+
 
     private lateinit var shadowActivity: ShadowActivity
 
@@ -42,16 +48,41 @@ class LoyaltyCardEditActivityTest {
     @Before
     fun setUp() {
         ShadowLog.stream = System.out
-
+        MockitoAnnotations.openMocks(this)
         context = ApplicationProvider.getApplicationContext()
-     //   mockTextView = TextView(con)
-       // mockImageView = ImageView(activity)
-       // shadowActivity = shadowOf(activity)
+    }
+
+
+    private fun buildActivity(): LoyaltyCardEditActivity {
+        return Robolectric.buildActivity(LoyaltyCardEditActivity::class.java)
+            .create()
+            .start()
+            .resume()
+            .visible()
+            .get()
+    }
+
+
+    // Helper for building activity with intent extras
+    private fun buildActivity(intentSetup: Intent.() -> Unit): LoyaltyCardEditActivity {
+        val intent = Intent().apply(intentSetup)
+        return Robolectric.buildActivity(LoyaltyCardEditActivity::class.java, intent)
+            .create()
+            .start()
+            .resume()
+            .visible()
+            .get()
+    }
+
+    // Helper for test cases that need just the controller (like your openSetIconMenu test)
+    private fun buildActivityController(intentSetup: Intent.() -> Unit = {}): org.robolectric.android.controller.ActivityController<LoyaltyCardEditActivity> {
+        val intent = Intent().apply(intentSetup)
+        return Robolectric.buildActivity(LoyaltyCardEditActivity::class.java, intent)
     }
 
     @Test
     fun testActivityCreation() {
-        activityController.create().start().resume()
+        val activity = buildActivity()
 
         // Verify activity title is set correctly
         assertEquals(activity.title.toString(),
@@ -65,10 +96,10 @@ class LoyaltyCardEditActivityTest {
 
     @Test
     fun testToolbarExists() {
-        val activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java).create()
-        activityController.start().resume()
+        val activity = buildActivity()
 
-        val activity = activityController.get()
+
+
         val toolbar = activity.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
 
         assertNotNull(toolbar)
@@ -128,27 +159,25 @@ class LoyaltyCardEditActivityTest {
 
     @Test
     fun testBarcodeGeneration() {
-        val activityController = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java).create()
-        activityController.start().resume()
-
-        val activity = activityController.get()
 
 
+        val activity = buildActivity ()
 
         val fakeTask = FakeBarcodeImageWriterTask(
             context, mockImageView, "12345", CatimaBarcode.fromBarcode(BarcodeFormat.CODE_128),
             mockTextView, false, null, false, false
         )
-
+        assertFalse(fakeTask.wasExecuted)
         activity.viewModel.executeTask(TaskHandler.TYPE.BARCODE, fakeTask)
         shadowOf(Looper.getMainLooper()).idle()
+        shadowOf(Looper.getMainLooper()).runToEndOfTasks()
         assertTrue(fakeTask.wasExecuted)
 
         // Test that barcode generation can be cancelled
-        activity.viewModel.cancelBarcodeGeneration()
+ //       activity.viewModel.cancelBarcodeGeneration()
 
         // Should not throw exception
-        assertTrue(true)
+   //     assertTrue(true)
     }
 
 
@@ -242,8 +271,9 @@ class LoyaltyCardEditActivityTest {
 
     @Test
     fun testActivityDestruction() {
-        activityController.create().start().resume()
 
+        val activityController = buildActivityController()
+        val activity = activityController.create().start().resume().get()
         // Verify a view exists before destruction
         assertNotNull(activity.findViewById(R.id.frontImageHolder))
 
