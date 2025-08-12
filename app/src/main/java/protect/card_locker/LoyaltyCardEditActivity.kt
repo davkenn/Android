@@ -99,27 +99,27 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var groupChips: ChipGroup
     private lateinit var validFromField: AutoCompleteTextView
     private lateinit var expiryField: AutoCompleteTextView
-    var balanceField: EditText? = null
-    var balanceCurrencyField: AutoCompleteTextView? = null
-    var cardIdFieldView: TextView? = null
-    var barcodeIdField: AutoCompleteTextView? = null
-    var barcodeTypeField: AutoCompleteTextView? = null
-    var barcodeImage: ImageView? = null
-    var barcodeImageLayout: View? = null
-    var barcodeCaptureLayout: View? = null
-    var cardImageFrontHolder: View? = null
-    var cardImageBackHolder: View? = null
-    var cardImageFront: ImageView? = null
-    var cardImageBack: ImageView? = null
+    private lateinit var balanceField: EditText
+    private lateinit var balanceCurrencyField: AutoCompleteTextView
+    private lateinit var cardIdFieldView: TextView
+    private lateinit var barcodeIdField: AutoCompleteTextView
+    private lateinit var barcodeTypeField: AutoCompleteTextView
+    private lateinit var barcodeImage: ImageView
+    private lateinit var barcodeImageLayout: View
+    private lateinit var barcodeCaptureLayout: View
+    private lateinit var cardImageFrontHolder: View
+    private lateinit var cardImageBackHolder: View
+    private lateinit var cardImageFront: ImageView
+    private lateinit var cardImageBack: ImageView
 
-    var enterButton: Button? = null
+    private lateinit var enterButton: Button
 
-    var toolbar: Toolbar? = null
+    private lateinit var toolbar: Toolbar
 
     var mDatabase: SQLiteDatabase? = null
 
 
-    var confirmExitDialog: AlertDialog? = null
+    lateinit var confirmExitDialog: AlertDialog
 
     var validBalance: Boolean = true
     var currencies: HashMap<String?, Currency?> = HashMap()
@@ -130,7 +130,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent?>? = null
 
     var mCropperLauncher: ActivityResultLauncher<Intent?>? = null
-    var mCropperOptions: UCrop.Options? = null
+    private lateinit var mCropperOptions: UCrop.Options
 
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
     private var mSystemLocale: Locale? = null
@@ -282,7 +282,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         barcodeIdField = binding.barcodeIdField
         barcodeTypeField = binding.barcodeTypeField
         barcodeImage = binding.barcode
-        barcodeImage!!.clipToOutline = true
+        barcodeImage.clipToOutline = true
         barcodeImageLayout = binding.barcodeLayout
         barcodeCaptureLayout = binding.barcodeCaptureLayout
         cardImageFrontHolder = binding.frontImageHolder
@@ -352,13 +352,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         setMaterialDatePickerResultListener()
 
-        balanceField!!.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
+        balanceField.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
             if (!hasFocus && !viewModel.onResuming && !viewModel.onRestoring) {
-                if (balanceField!!.text.toString().isEmpty()) {
+                if (balanceField.text.toString().isEmpty()) {
                     setLoyaltyCardBalance(BigDecimal.valueOf(0))
                 }
 
-                balanceField!!.setText(
+                balanceField.setText(
                     Utils.formatBalanceWithoutCurrencySymbol(
                         viewModel.loyaltyCard.balance,
                         viewModel.loyaltyCard.balanceType
@@ -367,24 +367,24 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        balanceField!!.addTextChangedListener(object : SimpleTextWatcher() {
+        balanceField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (viewModel.onResuming || viewModel.onRestoring) return
                 try {
                     val balance =
                         Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
                     setLoyaltyCardBalance(balance)
-                    balanceField!!.error = null
+                    balanceField.error = null
                     validBalance = true
                 } catch (e: ParseException) {
                     e.printStackTrace()
-                    balanceField!!.error = getString(R.string.balanceParsingFailed)
+                    balanceField.error = getString(R.string.balanceParsingFailed)
                     validBalance = false
                 }
             }
         })
 
-        balanceCurrencyField!!.addTextChangedListener(object : SimpleTextWatcher() {
+        balanceCurrencyField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
 
                 val currency: Currency? = if (s.toString() == getString(R.string.points)) {
@@ -396,7 +396,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 setLoyaltyCardBalanceType(currency)
 
                 if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !viewModel.onRestoring) {
-                    balanceField!!.setText(
+                    balanceField.setText(
                         Utils.formatBalanceWithoutCurrencySymbol(
                             viewModel.loyaltyCard.balance,
                             currency
@@ -438,11 +438,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     android.R.layout.select_dialog_item,
                     currencyList
                 )
-                balanceCurrencyField!!.setAdapter(currencyAdapter)
+                balanceCurrencyField.setAdapter(currencyAdapter)
             }
         })
 
-        cardIdFieldView!!.addTextChangedListener(object : SimpleTextWatcher() {
+        cardIdFieldView.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 if (viewModel.initDone && !viewModel.onResuming) {
                     if (viewModel.tempStoredOldBarcodeValue == null) {
@@ -451,7 +451,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         // update the barcode ID
                         if (viewModel.loyaltyCard.barcodeId != null) {
                             // If it is not set to "same as Card ID", save as tempStoredOldBarcodeValue
-                            viewModel.tempStoredOldBarcodeValue = barcodeIdField!!.text.toString()
+                            viewModel.tempStoredOldBarcodeValue = barcodeIdField.text.toString()
                         }
                     }
                 }
@@ -461,14 +461,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 setLoyaltyCardCardId(s.toString())
 
                 if (s.isEmpty()) {
-                    cardIdFieldView!!.error = getString(R.string.field_must_not_be_empty)
+                    cardIdFieldView.error = getString(R.string.field_must_not_be_empty)
                 } else {
-                    cardIdFieldView!!.error = null
+                    cardIdFieldView.error = null
                 }
             }
         })
 
-        barcodeIdField!!.addTextChangedListener(object : SimpleTextWatcher() {
+        barcodeIdField.addTextChangedListener(object : SimpleTextWatcher() {
             var lastValue: CharSequence? = null
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
@@ -484,7 +484,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     setLoyaltyCardBarcodeId(null)
                 } else if (s.toString() == getString(R.string.setBarcodeId)) {
                     if (lastValue.toString() != getString(R.string.setBarcodeId)) {
-                        barcodeIdField!!.setText(lastValue)
+                        barcodeIdField.setText(lastValue)
                     }
 
                     val builder: AlertDialog.Builder =
@@ -517,7 +517,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         // If the user manually changes the barcode again make sure we disable the
                         // request to update it to match the card id (if changed)
                         viewModel.tempStoredOldBarcodeValue = null
-                        barcodeIdField!!.setText(input.text)
+                        barcodeIdField.setText(input.text)
                     }
                     builder.setNegativeButton(
                         getString(R.string.cancel)
@@ -541,11 +541,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     android.R.layout.select_dialog_item,
                     barcodeIdList
                 )
-                barcodeIdField!!.setAdapter(barcodeIdAdapter)
+                barcodeIdField.setAdapter(barcodeIdAdapter)
             }
         })
 
-        barcodeTypeField!!.addTextChangedListener(object : SimpleTextWatcher() {
+        barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (!s.toString().isEmpty()) {
                     if (s.toString() == getString(R.string.noBarcode)) {
@@ -577,7 +577,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     android.R.layout.select_dialog_item,
                     barcodeList
                 )
-                barcodeTypeField!!.setAdapter(barcodeAdapter)
+                barcodeTypeField.setAdapter(barcodeAdapter)
             }
         })
 
@@ -666,14 +666,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     if (requestedFrontImage()) {
                         setCardImage(
                             ImageLocationType.front,
-                            cardImageFront!!,
+                            cardImageFront,
                             Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
                             true
                         )
                     } else if (requestedBackImage()) {
                         setCardImage(
                             ImageLocationType.back,
-                            cardImageBack!!,
+                            cardImageBack,
                             Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
                             true
                         )
@@ -732,15 +732,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         sourceWidth: Float,
         sourceHeight: Float
     ) {
-        mCropperOptions!!.setCompressionFormat(TEMP_CROP_IMAGE_FORMAT)
-        mCropperOptions!!.setFreeStyleCropEnabled(true)
-        mCropperOptions!!.setHideBottomControls(false)
+        mCropperOptions.setCompressionFormat(TEMP_CROP_IMAGE_FORMAT)
+        mCropperOptions.setFreeStyleCropEnabled(true)
+        mCropperOptions.setHideBottomControls(false)
         // default aspect ratio workaround
         var selectedByDefault = 1
         if (cardShapeDefault) {
             selectedByDefault = 2
         }
-        mCropperOptions!!.setAspectRatioOptions(
+        mCropperOptions.setAspectRatioOptions(
             selectedByDefault,
             AspectRatio(null, 1f, 1f),
             AspectRatio(
@@ -781,15 +781,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             android.R.attr.colorBackground,
             ContextCompat.getColor(this, R.color.md_theme_light_onSurface)
         )
-        mCropperOptions!!.setToolbarColor(colorSurface)
-        mCropperOptions!!.setStatusBarColor(colorSurface)
-        mCropperOptions!!.setToolbarWidgetColor(colorOnSurface)
-        mCropperOptions!!.setRootViewBackgroundColor(colorBackground)
+        mCropperOptions.setToolbarColor(colorSurface)
+        mCropperOptions.setStatusBarColor(colorSurface)
+        mCropperOptions.setToolbarWidgetColor(colorOnSurface)
+        mCropperOptions.setRootViewBackgroundColor(colorBackground)
         // set tool tip to be the darker of primary color
         if (Utils.isDarkModeEnabled(this)) {
-            mCropperOptions!!.setActiveControlsWidgetColor(colorOnPrimary)
+            mCropperOptions.setActiveControlsWidgetColor(colorOnPrimary)
         } else {
-            mCropperOptions!!.setActiveControlsWidgetColor(colorPrimary)
+            mCropperOptions.setActiveControlsWidgetColor(colorPrimary)
         }
     }
 
@@ -830,15 +830,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding.noteEdit.setText(viewModel.loyaltyCard.note)
         formatDateField(this, validFromField, viewModel.loyaltyCard.validFrom)
         formatDateField(this, expiryField, viewModel.loyaltyCard.expiry)
-        cardIdFieldView!!.text = viewModel.loyaltyCard.cardId
+        cardIdFieldView.text = viewModel.loyaltyCard.cardId
         val barcodeId = viewModel.loyaltyCard.barcodeId
-        barcodeIdField!!.setText(
+        barcodeIdField.setText(
             if (barcodeId != null && !barcodeId.isEmpty()) barcodeId else getString(
                 R.string.sameAsCardId
             )
         )
         val barcodeType = viewModel.loyaltyCard.barcodeType
-        barcodeTypeField!!.setText(
+        barcodeTypeField.setText(
             if (barcodeType != null) barcodeType.prettyName() else getString(
                 R.string.noBarcode
             )
@@ -850,7 +850,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val balance =
             if (viewModel.loyaltyCard.balance == null) BigDecimal("0") else viewModel.loyaltyCard.balance
         setLoyaltyCardBalance(balance)
-        balanceField!!.setText(
+        balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
                 viewModel.loyaltyCard.balance,
                 viewModel.loyaltyCard.balanceType
@@ -911,13 +911,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         setThumbnailImage(viewModel.loyaltyCard.getImageThumbnail(this))
         setCardImage(
             ImageLocationType.front,
-            cardImageFront!!,
+            cardImageFront,
             viewModel.loyaltyCard.getImageFront(this),
             true
         )
         setCardImage(
             ImageLocationType.back,
-            cardImageBack!!,
+            cardImageBack,
             viewModel.loyaltyCard.getImageBack(this),
             true
         )
@@ -930,11 +930,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         generateBarcode()
 
-        enterButton!!.setOnClickListener(EditCardIdAndBarcode())
-        barcodeImage!!.setOnClickListener(EditCardIdAndBarcode())
+        enterButton.setOnClickListener(EditCardIdAndBarcode())
+        barcodeImage.setOnClickListener(EditCardIdAndBarcode())
 
-        cardImageFrontHolder!!.setOnClickListener(ChooseCardImage())
-        cardImageBackHolder!!.setOnClickListener(ChooseCardImage())
+        cardImageFrontHolder.setOnClickListener(ChooseCardImage())
+        cardImageBackHolder.setOnClickListener(ChooseCardImage())
 
         val saveButton = binding.fabSave
         saveButton.setOnClickListener { v: View? -> doSave() }
@@ -1073,9 +1073,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun formatBalanceCurrencyField(balanceType: Currency?) {
         if (balanceType == null) {
-            balanceCurrencyField!!.setText(getString(R.string.points))
+            balanceCurrencyField.setText(getString(R.string.points))
         } else {
-            balanceCurrencyField!!.setText(getCurrencySymbol(balanceType))
+            balanceCurrencyField.setText(getCurrencySymbol(balanceType))
         }
     }
 
@@ -1160,9 +1160,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun askBarcodeChange(callback: Runnable?) {
-        if (viewModel.tempStoredOldBarcodeValue == cardIdFieldView!!.text.toString()) {
+        if (viewModel.tempStoredOldBarcodeValue == cardIdFieldView.text.toString()) {
             // They are the same, don't ask
-            barcodeIdField!!.setText(R.string.sameAsCardId)
+            barcodeIdField.setText(R.string.sameAsCardId)
             viewModel.tempStoredOldBarcodeValue = null
 
             callback?.run()
@@ -1176,7 +1176,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .setPositiveButton(
                 R.string.yes
             ) { dialog: DialogInterface?, which: Int ->
-                barcodeIdField!!.setText(R.string.sameAsCardId)
+                barcodeIdField.setText(R.string.sameAsCardId)
                 dialog!!.dismiss()
             }
             .setNegativeButton(
@@ -1184,7 +1184,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
             .setOnDismissListener { dialogInterface: DialogInterface? ->
                 if (viewModel.tempStoredOldBarcodeValue != null) {
-                    barcodeIdField!!.setText(viewModel.tempStoredOldBarcodeValue)
+                    barcodeIdField.setText(viewModel.tempStoredOldBarcodeValue)
                     viewModel.tempStoredOldBarcodeValue = null
                 }
                 callback?.run()
@@ -1218,7 +1218,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
             confirmExitDialog = builder.create()
         }
-        confirmExitDialog!!.show()
+        confirmExitDialog.show()
     }
 
 
@@ -1269,7 +1269,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     override fun onBarcodeImageWriterResult(success: Boolean) {
         if (!success) {
-            barcodeImageLayout!!.visibility = View.GONE
+            barcodeImageLayout.visibility = View.GONE
             Toast.makeText(
                 this@LoyaltyCardEditActivity,
                 getString(R.string.wrongValueForBarcodeType),
@@ -1284,7 +1284,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             val b = Bundle()
             b.putString(
                 LoyaltyCard.BUNDLE_LOYALTY_CARD_CARD_ID,
-                cardIdFieldView!!.text.toString()
+                cardIdFieldView.text.toString()
             )
             i.putExtras(b)
             mCardIdAndBarCodeEditorLauncher!!.launch(i)
@@ -1302,13 +1302,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 R.id.frontImageHolder -> {
                     currentImage = viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.front
-                    targetView = cardImageFront!!
+                    targetView = cardImageFront
                 }
 
                 R.id.backImageHolder -> {
                     currentImage = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
                     imageLocationType = ImageLocationType.back
-                    targetView = cardImageBack!!
+                    targetView = cardImageBack
                 }
 
                 R.id.thumbnail -> {
@@ -1586,23 +1586,23 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         if (viewModel.loyaltyCard.cardId.isEmpty()) {
-            cardIdFieldView!!.error = getString(R.string.field_must_not_be_empty)
+            cardIdFieldView.error = getString(R.string.field_must_not_be_empty)
 
             // Focus element if first error element
             if (!hasError) {
                 selectTab(0)
-                cardIdFieldView!!.requestFocus()
+                cardIdFieldView.requestFocus()
                 hasError = true
             }
         }
 
         if (!validBalance) {
-            balanceField!!.error = getString(R.string.balanceParsingFailed)
+            balanceField.error = getString(R.string.balanceParsingFailed)
 
             // Focus element if first error element
             if (!hasError) {
                 selectTab(1)
-                balanceField!!.requestFocus()
+                balanceField.requestFocus()
                 hasError = true
             }
         }
@@ -1724,11 +1724,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         Log.d("cropper", "asking cropper to output to $destUri")
 
         if (requestedFrontImage()) {
-            mCropperOptions!!.setToolbarTitle(getResources().getString(R.string.setFrontImage))
+            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setFrontImage))
         } else if (requestedBackImage()) {
-            mCropperOptions!!.setToolbarTitle(getResources().getString(R.string.setBackImage))
+            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setBackImage))
         } else if (requestedIcon()) {
-            mCropperOptions!!.setToolbarTitle(getResources().getString(R.string.setIcon))
+            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setIcon))
         } else {
             Toast.makeText(
                 this,
@@ -1797,12 +1797,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val ucropIntent = UCrop.of(
             sourceUri,
             destUri
-        ).withOptions(mCropperOptions!!)
+        ).withOptions(mCropperOptions)
             .getIntent(this)
         ucropIntent.setClass(this, UCropWrapper::class.java)
-        for (i in 0..<toolbar!!.size) {
+        for (i in 0..<toolbar.size) {
             // send toolbar font details to ucrop wrapper
-            val child = toolbar!!.getChildAt(i)
+            val child = toolbar.getChildAt(i)
             if (child is AppCompatTextView) {
                 val childTextView = child
                 ucropIntent.putExtra(
@@ -1822,20 +1822,20 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val barcodeFormat = viewModel.loyaltyCard.barcodeType
 
         if (cardIdString == null || cardIdString.isEmpty() || barcodeFormat == null) {
-            barcodeImageLayout!!.visibility = View.GONE
+            barcodeImageLayout.visibility = View.GONE
             return
         }
 
-        barcodeImageLayout!!.visibility = View.VISIBLE
+        barcodeImageLayout.visibility = View.VISIBLE
 
-        if (barcodeImage!!.height == 0) {
+        if (barcodeImage.height == 0) {
             Log.d(TAG, "ImageView size is not known known at start, waiting for load")
             // The size of the ImageView is not yet available as it has not
             // yet been drawn. Wait for it to be drawn so the size is available.
-            barcodeImage!!.viewTreeObserver.addOnGlobalLayoutListener(
+            barcodeImage.viewTreeObserver.addOnGlobalLayoutListener(
                 object : OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
-                        barcodeImage!!.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                        barcodeImage.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
                         Log.d(TAG, "ImageView size now known")
                         val barcodeWriter = BarcodeImageWriterTask(
