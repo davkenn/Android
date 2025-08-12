@@ -119,17 +119,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var mDatabase: SQLiteDatabase? = null
 
 
-    lateinit var confirmExitDialog: AlertDialog
+    var confirmExitDialog: AlertDialog? = null
 
     var validBalance: Boolean = true
     var currencies: HashMap<String?, Currency?> = HashMap()
     var currencySymbols: HashMap<String?, String?> = HashMap()
 
-    var mPhotoTakerLauncher: ActivityResultLauncher<Uri?>? = null
-    var mPhotoPickerLauncher: ActivityResultLauncher<Intent?>? = null
-    var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent?>? = null
+    private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri?>
+    private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent?>
+    private lateinit var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent?>
 
-    var mCropperLauncher: ActivityResultLauncher<Intent?>? = null
+    private lateinit var mCropperLauncher: ActivityResultLauncher<Intent?>
     private lateinit var mCropperOptions: UCrop.Options
 
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
@@ -1218,7 +1218,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
             confirmExitDialog = builder.create()
         }
-        confirmExitDialog.show()
+        confirmExitDialog!!.show()
     }
 
 
@@ -1231,7 +1231,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.requestedImageType = type
 
         try {
-            mPhotoTakerLauncher!!.launch(photoURI)
+            mPhotoTakerLauncher.launch(photoURI)
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(
                 applicationContext,
@@ -1256,7 +1256,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(contentIntent))
 
         try {
-            mPhotoPickerLauncher!!.launch(chooserIntent)
+            mPhotoPickerLauncher.launch(chooserIntent)
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(
                 applicationContext,
@@ -1287,7 +1287,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 cardIdFieldView.text.toString()
             )
             i.putExtras(b)
-            mCardIdAndBarCodeEditorLauncher!!.launch(i)
+            mCardIdAndBarCodeEditorLauncher.launch(i)
         }
     }
 
@@ -1812,7 +1812,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 break
             }
         }
-        mCropperLauncher!!.launch(ucropIntent)
+        mCropperLauncher.launch(ucropIntent)
     }
 
     private fun generateBarcode() {
