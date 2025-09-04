@@ -318,7 +318,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val storeName = s.toString().trim { it <= ' ' }
+                val storeName = s.toString().trim()
                 setLoyaltyCardStore(storeName)
                 generateIcon(storeName)
 
@@ -547,7 +547,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (!s.toString().isEmpty()) {
+                if (s.isNotEmpty()) {
                     if (s.toString() == getString(R.string.noBarcode)) {
                         setLoyaltyCardBarcodeType(null)
                     } else {
@@ -940,7 +940,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         saveButton.setOnClickListener { v: View? -> doSave() }
         saveButton.bringToFront()
 
-        generateIcon(binding.storeNameEdit.text.toString().trim { it <= ' ' })
+        generateIcon(binding.storeNameEdit.text.toString().trim())
 
         val headerColor = viewModel.loyaltyCard.headerColor
         if (headerColor != null) {
@@ -976,7 +976,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
             binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
         } else {
-            generateIcon(binding.storeNameEdit.text.toString().trim { it <= ' ' })
+            generateIcon(binding.storeNameEdit.text.toString().trim())
 
             val headerColor = viewModel.loyaltyCard.headerColor
 
