@@ -212,12 +212,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val b = intent.extras
 
         viewModel.addGroup = b?.getString(BUNDLE_ADDGROUP)
-        viewModel.openSetIconMenu = b != null && b.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false)
+        viewModel.openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
 
         viewModel.loyaltyCardId = b?.getInt(BUNDLE_ID) ?: 0
-        viewModel.updateLoyaltyCard = b != null && b.getBoolean(BUNDLE_UPDATE, false)
-        viewModel.duplicateFromLoyaltyCardId =
-            b != null && b.getBoolean(BUNDLE_DUPLICATE_ID, false)
+        viewModel.updateLoyaltyCard = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
+        viewModel.duplicateFromLoyaltyCardId = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
         viewModel.importLoyaltyCardUri = intent.data
 
         val importLoyaltyCardUri = viewModel.importLoyaltyCardUri
@@ -833,22 +832,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         cardIdFieldView.text = viewModel.loyaltyCard.cardId
         val barcodeId = viewModel.loyaltyCard.barcodeId
         barcodeIdField.setText(
-            if (barcodeId != null && !barcodeId.isEmpty()) barcodeId else getString(
-                R.string.sameAsCardId
-            )
+            barcodeId.takeIf { !it.isNullOrEmpty() } ?: getString(R.string.sameAsCardId)
         )
         val barcodeType = viewModel.loyaltyCard.barcodeType
-        barcodeTypeField.setText(
-            if (barcodeType != null) barcodeType.prettyName() else getString(
-                R.string.noBarcode
-            )
-        )
+        barcodeTypeField.setText(barcodeType?.prettyName() ?: getString(R.string.noBarcode))
 
         // We set the balance here (with onResuming/onRestoring == true) to prevent formatBalanceCurrencyField() from setting it (via onTextChanged),
         // which can cause issues when switching locale because it parses the balance and e.g. the decimal separator may have changed.
         formatBalanceCurrencyField(viewModel.loyaltyCard.balanceType)
-        val balance =
-            if (viewModel.loyaltyCard.balance == null) BigDecimal("0") else viewModel.loyaltyCard.balance
+        val balance = viewModel.loyaltyCard.balance ?: BigDecimal("0")
         setLoyaltyCardBalance(balance)
         balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
