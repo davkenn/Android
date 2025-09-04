@@ -122,8 +122,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var confirmExitDialog: AlertDialog? = null
 
     var validBalance: Boolean = true
-    var currencies: HashMap<String?, Currency?> = HashMap()
-    var currencySymbols: HashMap<String?, String?> = HashMap()
+    var currencies: MutableMap<String?, Currency?> = mutableMapOf()
+    var currencySymbols: MutableMap<String?, String?> = mutableMapOf()
 
     private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri?>
     private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent?>
@@ -533,7 +533,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val barcodeIdList = ArrayList<String?>()
+                val barcodeIdList = mutableListOf<String?>()
                 barcodeIdList.add(0, getString(R.string.sameAsCardId))
                 barcodeIdList.add(1, getString(R.string.setBarcodeId))
                 val barcodeIdAdapter = ArrayAdapter<String?>(
@@ -1058,7 +1058,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val dropdownOptions = ArrayList<String?>()
+                val dropdownOptions = mutableListOf<String?>()
                 dropdownOptions.add(0, getString(defaultOptionStringId))
                 dropdownOptions.add(1, getString(chooseDateOptionStringId))
                 val dropdownOptionsAdapter = ArrayAdapter<String?>(
@@ -1323,7 +1323,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
 
-            val cardOptions = LinkedHashMap<String, Callable<Void>>()
+            val cardOptions = linkedMapOf<String, Callable<Void>>()
             if (currentImage != null && v.id != R.id.thumbnail) {
                 cardOptions.put(getString(R.string.removeImage), Callable {
                     setCardImage(imageLocationType, targetView, null, true)
@@ -1611,7 +1611,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
-        val selectedGroups: MutableList<Group?> = ArrayList()
+        val selectedGroups: MutableList<Group?> = mutableListOf()
 
         for (chipId in groupChips.checkedChipIds) {
             val chip = groupChips.findViewById<Chip>(chipId)
