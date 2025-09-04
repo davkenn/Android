@@ -610,8 +610,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             StartActivityForResult()
         ) { result: ActivityResult? ->
             if (result!!.resultCode == RESULT_OK) {
-                val intent = result.data
-                if (intent == null) {
+                val intent = result.data ?: run {
                     Log.d("photo picker", "photo picker returned without an intent")
                     return@registerForActivityResult
                 }
@@ -935,10 +934,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         generateIcon(binding.storeNameEdit.text.toString().trim())
 
         val headerColor = viewModel.loyaltyCard.headerColor
-        if (headerColor != null) {
+        headerColor?.let { color ->
             binding.thumbnail.setOnClickListener(ChooseCardImage())
-            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
+            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(color)) Color.BLACK else Color.WHITE)
+            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(color)) Color.WHITE else Color.BLACK)
         }
 
         viewModel.onResuming = false
@@ -1008,10 +1007,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        if (bitmap != null) {
-            imageView.setImageBitmap(bitmap)
-        } else if (applyFallback) {
-            imageView.setImageResource(R.drawable.ic_camera_white)
+        bitmap?.let { imageView.setImageBitmap(it) } ?: run {
+            if (applyFallback) {
+                imageView.setImageResource(R.drawable.ic_camera_white)
+            }
         }
     }
 
@@ -1146,8 +1145,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        if (failureReason != null) {
-            Toast.makeText(this, failureReason, Toast.LENGTH_LONG).show()
+        failureReason?.let { reason ->
+            Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1175,8 +1174,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 R.string.no
             ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
             .setOnDismissListener { dialogInterface: DialogInterface? ->
-                if (viewModel.tempStoredOldBarcodeValue != null) {
-                    barcodeIdField.setText(viewModel.tempStoredOldBarcodeValue)
+                viewModel.tempStoredOldBarcodeValue?.let { value ->
+                    barcodeIdField.setText(value)
                     viewModel.tempStoredOldBarcodeValue = null
                 }
                 callback?.run()
@@ -1186,7 +1185,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun askBeforeQuitIfChanged() {
         if (!viewModel.hasChanged) {
-            if (viewModel.tempStoredOldBarcodeValue != null) {
+            viewModel.tempStoredOldBarcodeValue?.let {
                 askBarcodeChange { this.askBeforeQuitIfChanged() }
                 return
             }
@@ -1466,9 +1465,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         // Use the selected date as the default date in the picker
         val calendar = Calendar.getInstance()
-        if (selectedDate != null) {
-            calendar.setTime(selectedDate)
-        }
+        selectedDate?.let { calendar.setTime(it) }
 
         val materialDatePicker = MaterialDatePicker.Builder.datePicker()
             .setSelection(calendar.timeInMillis)
@@ -1560,7 +1557,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
-        if (viewModel.tempStoredOldBarcodeValue != null) {
+        viewModel.tempStoredOldBarcodeValue?.let {
             askBarcodeChange { this.doSave() }
             return
         }
@@ -1885,7 +1882,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun showPart(part: String?) {
-        if (viewModel.tempStoredOldBarcodeValue != null) {
+        viewModel.tempStoredOldBarcodeValue?.let {
             askBarcodeChange{ showPart(part) }
             return
         }
