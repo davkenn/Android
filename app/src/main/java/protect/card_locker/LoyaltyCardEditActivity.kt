@@ -116,7 +116,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private lateinit var toolbar: Toolbar
 
-    var mDatabase: SQLiteDatabase? = null
+    private lateinit var mDatabase: SQLiteDatabase
 
 
     var confirmExitDialog: AlertDialog? = null
@@ -133,7 +133,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var mCropperOptions: UCrop.Options
 
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
-    private var mSystemLocale: Locale? = null
+    private lateinit var mSystemLocale: Locale
 
     override fun attachBaseContext(base: Context?) {
         // store system locale
