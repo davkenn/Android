@@ -1,6 +1,6 @@
 package protect.card_locker
 
-
+import protect.card_locker.R
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -69,6 +69,7 @@ import protect.card_locker.async.TaskHandler
 import protect.card_locker.databinding.LayoutChipChoiceBinding
 import protect.card_locker.databinding.LoyaltyCardEditActivityBinding
 import protect.card_locker.viewmodels.LoyaltyCardEditActivityViewModel
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InvalidObjectException
@@ -84,6 +85,7 @@ import java.util.concurrent.Callable
 import androidx.core.net.toUri
 import androidx.core.view.size
 import androidx.core.view.isEmpty
+import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback,
     ColorPickerDialogListener {
@@ -272,6 +274,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel = ViewModelProvider(this)[LoyaltyCardEditActivityViewModel::class.java]
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
+        
+        // Clean up any leftover temporary files from previous sessions
+        cleanUpTempImages()
         groupChips = binding.groupChips
         validFromField = binding.validFromField
         expiryField = binding.expiryField
@@ -692,6 +697,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                     Log.d("cropper", "requestedImageType: " + viewModel.requestedImageType)
                     viewModel.hasChanged = true
+                    
+                    // Clean up temporary files after successful image processing
+                    cleanUpTempImages()
                 } else {
                     Toast.makeText(
                         this@LoyaltyCardEditActivity,
@@ -715,6 +723,27 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 askBeforeQuitIfChanged()
             }
         })
+    }
+
+    private fun cleanUpTempImages() {
+        try {
+            val cameraTempFile = File(cacheDir, TEMP_CAMERA_IMAGE_NAME)
+            if (cameraTempFile.exists()) {
+                cameraTempFile.delete()
+            }
+
+            val cropTempFile = File(cacheDir, TEMP_CROP_IMAGE_NAME)
+            if (cropTempFile.exists()) {
+                cropTempFile.delete()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cleaning up temporary image files", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cleanUpTempImages()
     }
 
     private fun selectTab(index: Int) {
