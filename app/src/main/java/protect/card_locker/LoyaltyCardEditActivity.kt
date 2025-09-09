@@ -112,16 +112,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var cardImageBackHolder: View
     private lateinit var cardImageFront: ImageView
     private lateinit var cardImageBack: ImageView
-
     private lateinit var enterButton: Button
-
     private lateinit var toolbar: Toolbar
-
     private lateinit var mDatabase: SQLiteDatabase
 
-
     var confirmExitDialog: AlertDialog? = null
-
     var validBalance: Boolean = true
     var currencies: MutableMap<String?, Currency?> = mutableMapOf()
     var currencySymbols: MutableMap<String?, String?> = mutableMapOf()
@@ -150,78 +145,63 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     protected fun setLoyaltyCardNote(note: String) {
         viewModel.loyaltyCard.setNote(note)
-
         viewModel.hasChanged = true
     }
 
     fun setLoyaltyCardValidFrom(validFrom: Date?) {
         viewModel.loyaltyCard.setValidFrom(validFrom)
-
         viewModel.hasChanged = true
     }
 
     fun setLoyaltyCardExpiry(expiry: Date?) {
         viewModel.loyaltyCard.setExpiry(expiry)
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardBalance(balance: BigDecimal) {
         viewModel.loyaltyCard.setBalance(balance)
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardBalanceType(balanceType: Currency?) {
         viewModel.loyaltyCard.setBalanceType(balanceType)
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardCardId(cardId: String) {
         viewModel.loyaltyCard.setCardId(cardId)
-
         generateBarcode()
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardBarcodeId(barcodeId: String?) {
         viewModel.loyaltyCard.setBarcodeId(barcodeId)
-
         generateBarcode()
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardBarcodeType(barcodeType: CatimaBarcode?) {
         viewModel.loyaltyCard.setBarcodeType(barcodeType)
-
         generateBarcode()
-
         viewModel.hasChanged = true
     }
 
     protected fun setLoyaltyCardHeaderColor(headerColor: Int?) {
         viewModel.loyaltyCard.setHeaderColor(headerColor)
-
         viewModel.hasChanged = true
     }
 
     /* Extract intent fields and return if code should keep running */
     private fun extractIntentFields(intent: Intent): Boolean {
         val b = intent.extras
-
         viewModel.addGroup = b?.getString(BUNDLE_ADDGROUP)
         viewModel.openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
-
         viewModel.loyaltyCardId = b?.getInt(BUNDLE_ID) ?: 0
         viewModel.updateLoyaltyCard = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
         viewModel.duplicateFromLoyaltyCardId = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
         viewModel.importLoyaltyCardUri = intent.data
 
         val importLoyaltyCardUri = viewModel.importLoyaltyCardUri
-
         // If we have to import a loyalty card, do so
         if (viewModel.updateLoyaltyCard || viewModel.duplicateFromLoyaltyCardId) {
             // Retrieve from database
@@ -1104,9 +1084,32 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
         onMockedRequestPermissionsResult(requestCode, permissions, grantResults)
     }
+
+    private fun performActionWithPermissionCheck(requestCode: Int, granted: Boolean): String? {
+        if (!granted) {
+            //fix to make it return the right error message
+            // Permission denied, no need to log anything here, user was already informed
+            return requestCode.toString() + "Storage read permission denied by user"
+        }
+        when (requestCode) {
+            PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
+            PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
+            PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
+                takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_FRONT)
+
+            }
+
+            PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
+            PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
+            PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
+                selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_FRONT)
+                }
+            }
+            return null
+        }
+
 
     override fun onMockedRequestPermissionsResult(
         requestCode: Int,
@@ -1115,63 +1118,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     ) {
         val granted =
             grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-        var failureReason: Int? = null
+        var failureReason: String? = null
 
-        when (requestCode) {
-            PERMISSION_REQUEST_CAMERA_IMAGE_FRONT -> {
-                if (granted) {
-                    takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_FRONT)
-                    return
-                }
-
-                failureReason = R.string.cameraPermissionRequired
-            }
-
-            PERMISSION_REQUEST_CAMERA_IMAGE_BACK -> {
-                if (granted) {
-                    takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_BACK)
-                    return
-                }
-
-                failureReason = R.string.cameraPermissionRequired
-            }
-
-            PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
-                if (granted) {
-                    takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_ICON)
-                    return
-                }
-
-                failureReason = R.string.cameraPermissionRequired
-            }
-
-            PERMISSION_REQUEST_STORAGE_IMAGE_FRONT -> {
-                if (granted) {
-                    selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_FRONT)
-                    return
-                }
-
-                failureReason = R.string.storageReadPermissionRequired
-            }
-
-            PERMISSION_REQUEST_STORAGE_IMAGE_BACK -> {
-                if (granted) {
-                    selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_BACK)
-                    return
-                }
-
-                failureReason = R.string.storageReadPermissionRequired
-            }
-
-            PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
-                if (granted) {
-                    selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_ICON)
-                    return
-                }
-
-                failureReason = R.string.storageReadPermissionRequired
-            }
-        }
+        failureReason = performActionWithPermissionCheck(requestCode, granted)
 
         failureReason?.let { reason ->
             Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
@@ -1185,7 +1134,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.tempStoredOldBarcodeValue = null
 
             callback?.run()
-
             return
         }
 
