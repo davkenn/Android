@@ -69,7 +69,6 @@ import protect.card_locker.async.TaskHandler
 import protect.card_locker.databinding.LayoutChipChoiceBinding
 import protect.card_locker.databinding.LoyaltyCardEditActivityBinding
 import protect.card_locker.viewmodels.LoyaltyCardEditActivityViewModel
-import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InvalidObjectException
