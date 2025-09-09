@@ -82,6 +82,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Callable
 import androidx.core.net.toUri
+import androidx.core.os.registerForAllProfilingResults
 import androidx.core.view.size
 import androidx.core.view.isEmpty
 import java.io.File
@@ -1312,12 +1313,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             cardOptions.put(getString(R.string.takePhoto), Callable {
-                val permissionRequestType: Int = when (v.id) {
-                    R.id.frontImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
-                    R.id.backImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_BACK
-                    R.id.thumbnail -> PERMISSION_REQUEST_CAMERA_IMAGE_ICON
-                    else -> throw IllegalArgumentException("Unknown ID type " + v.id)
-                }
+                val permissionRequestType: Int = resourceIdToPermission(v.id)
 
                 PermissionUtils.requestCameraPermission(
                     this@LoyaltyCardEditActivity,
@@ -1394,7 +1390,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         callable.call()
                     } catch (e: Exception) {
                         e.printStackTrace()
-
                         // Rethrow as NoSuchElementException
                         // This isn't really true, but a View.OnClickListener doesn't allow throwing other types
                         throw NoSuchElementException(e.message)
@@ -1668,13 +1663,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        val id = item.itemId
-
-        if (id == android.R.id.home) {
+        if (item.itemId == android.R.id.home) {
             askBeforeQuitIfChanged()
             return true
         }
-
         return super.onOptionsItemSelected(item)
     }
 
@@ -1837,11 +1829,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun generateIcon(store: String?) {
         val headerColor = viewModel.loyaltyCard.headerColor
-
         if (headerColor == null) {
             return
         }
-
         if (viewModel.loyaltyCard.getImageThumbnail(this) == null) {
             binding.thumbnail.setBackgroundColor(headerColor)
 
@@ -1915,6 +1905,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
 
+
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_FRONT = 100
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_BACK = 101
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_ICON = 102
@@ -1927,7 +1918,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         const val BUNDLE_UPDATE: String = "update"
         const val BUNDLE_OPEN_SET_ICON_MENU: String = "openSetIconMenu"
         const val BUNDLE_ADDGROUP: String = "addGroup"
-@JvmStatic
+
+
+        @JvmStatic
         fun formatDateField(context: Context, textField: EditText, date: Date?) {
             textField.tag = date
 
@@ -1941,6 +1934,24 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             } else {
                 textField.setText(DateFormat.getDateInstance(DateFormat.LONG).format(date))
             }
+        }
+        fun permissionToResourceId(permission:Int): Int {
+            val result = when (permission) {
+                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT -> R.id.frontImageHolder
+                PERMISSION_REQUEST_CAMERA_IMAGE_BACK -> R.id.backImageHolder
+                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> R.id.thumbnail
+                else -> throw IllegalArgumentException("Unknown permission Id $permission")
+            }
+            return result
+    }
+        fun resourceIdToPermission(resourceId:Int): Int {
+            val result = when (resourceId) {
+                R.id.frontImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
+                R.id.backImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_BACK
+                R.id.thumbnail -> PERMISSION_REQUEST_CAMERA_IMAGE_ICON
+                else -> throw IllegalArgumentException("Unknown resource Id $resourceId")
+            }
+            return result
         }
     }
 }
