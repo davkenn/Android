@@ -800,22 +800,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun requestedFrontImage(): Boolean {
-        val requestedImageType = viewModel.requestedImageType
+    private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
 
-        return requestedImageType == Utils.CARD_IMAGE_FROM_CAMERA_FRONT || requestedImageType == Utils.CARD_IMAGE_FROM_FILE_FRONT
-    }
+    private fun requestedFrontImage(): Boolean = getCurrentImageOperation() == ImageOperation.FRONT
 
-    private fun requestedBackImage(): Boolean {
-        val requestedImageType = viewModel.requestedImageType
+    private fun requestedBackImage(): Boolean = getCurrentImageOperation() == ImageOperation.BACK
 
-        return requestedImageType == Utils.CARD_IMAGE_FROM_CAMERA_BACK || requestedImageType == Utils.CARD_IMAGE_FROM_FILE_BACK
-    }
-
-    private fun requestedIcon(): Boolean {
-        val requestedImageType = viewModel.requestedImageType
-        return requestedImageType == Utils.CARD_IMAGE_FROM_CAMERA_ICON || requestedImageType == Utils.CARD_IMAGE_FROM_FILE_ICON
-    }
+    private fun requestedIcon(): Boolean = getCurrentImageOperation() == ImageOperation.ICON
 
     @SuppressLint("DefaultLocale")
     override fun onResume() {
@@ -975,6 +966,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
             binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
+
         } else {
             generateIcon(binding.storeNameEdit.text.toString().trim())
 
@@ -1090,26 +1082,30 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun performActionWithPermissionCheck(requestCode: Int, granted: Boolean): String? {
         if (!granted) {
-            //fix to make it return the right error message
-            // Permission denied, no need to log anything here, user was already informed
-            return requestCode.toString() + "Storage read permission denied by user"
+            return "$requestCode permission denied by user"
         }
-        when (requestCode) {
-            PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
-            PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
-            PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
-                takePhotoForCard(Utils.CARD_IMAGE_FROM_CAMERA_FRONT)
 
-            }
+        try {
+            when (requestCode) {
+                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
+                PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
+                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
+                    val operation = ImageOperation.fromCameraPermission(requestCode)
+                    takePhotoForCard(operation.cameraTypeConstant)
+                }
 
-            PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
-            PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
-            PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
-                selectImageFromGallery(Utils.CARD_IMAGE_FROM_FILE_FRONT)
+                PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
+                PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
+                PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
+                    val operation = ImageOperation.fromStoragePermission(requestCode)
+                    selectImageFromGallery(operation.fileTypeConstant)
                 }
             }
-            return null
+        } catch (e: IllegalArgumentException) {
+            return "Unknown permission request code: $requestCode"
         }
+        return null
+    }
 
 
     override fun onMockedRequestPermissionsResult(
@@ -1197,6 +1193,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             Utils.createTempFile(this, TEMP_CAMERA_IMAGE_NAME)
         )
         viewModel.requestedImageType = type
+        viewModel.currentImageOperation = ImageOperation.fromImageType(type)
 
         try {
             mPhotoTakerLauncher.launch(photoURI)
@@ -1212,6 +1209,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun selectImageFromGallery(type: Int) {
         viewModel.requestedImageType = type
+        viewModel.currentImageOperation = ImageOperation.fromImageType(type)
 
         val photoPickerIntent = Intent(Intent.ACTION_PICK)
         photoPickerIntent.type = "image/*"
@@ -1262,127 +1260,86 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     internal inner class ChooseCardImage : View.OnClickListener {
         @Throws(NoSuchElementException::class)
         override fun onClick(v: View) {
-            val currentImage: Bitmap?
-            val imageLocationType: ImageLocationType?
-            val targetView: ImageView
+            val operation = try {
+                ImageOperation.fromResourceId(v.id)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("Invalid IMAGE ID ${v.id}", e)
+            }
 
-            when (v.id) {
-                R.id.frontImageHolder -> {
-                    currentImage = viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
-                    imageLocationType = ImageLocationType.front
-                    targetView = cardImageFront
-                }
+            val currentImage = when (operation.locationType) {
+                ImageLocationType.front -> viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
+                ImageLocationType.back -> viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
+                ImageLocationType.icon -> viewModel.loyaltyCard.getImageThumbnail(this@LoyaltyCardEditActivity)
+            }
 
-                R.id.backImageHolder -> {
-                    currentImage = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
-                    imageLocationType = ImageLocationType.back
-                    targetView = cardImageBack
-                }
-
-                R.id.thumbnail -> {
-                    currentImage =
-                        viewModel.loyaltyCard.getImageThumbnail(this@LoyaltyCardEditActivity)
-                    imageLocationType = ImageLocationType.icon
-                    targetView = binding.thumbnail
-                }
-
-                else -> {
-                    throw IllegalArgumentException("Invalid IMAGE ID " + v.id)
-                }
+            val targetView = when (operation) {
+                ImageOperation.FRONT -> cardImageFront
+                ImageOperation.BACK -> cardImageBack
+                ImageOperation.ICON -> binding.thumbnail
             }
 
             val cardOptions = linkedMapOf<String, Callable<Void>>()
-            if (currentImage != null && v.id != R.id.thumbnail) {
-                cardOptions.put(getString(R.string.removeImage), Callable {
-                    setCardImage(imageLocationType, targetView, null, true)
+            
+            if (currentImage != null && operation != ImageOperation.ICON) {
+                cardOptions[getString(R.string.removeImage)] = Callable {
+                    setCardImage(operation.locationType, targetView, null, true)
                     null
-                })
+                }
             }
 
-            if (v.id == R.id.thumbnail) {
-                cardOptions.put(getString(R.string.selectColor), Callable {
+            if (operation == ImageOperation.ICON) {
+                cardOptions[getString(R.string.selectColor)] = Callable {
                     val dialogBuilder = ColorPickerDialog.newBuilder()
-                    if (viewModel.loyaltyCard.headerColor != null) {
-                        dialogBuilder.setColor(viewModel.loyaltyCard.headerColor!!)
-                    }
-
+                    viewModel.loyaltyCard.headerColor?.let { dialogBuilder.setColor(it) }
                     val dialog = dialogBuilder.create()
                     dialog.show(supportFragmentManager, "color-picker-dialog")
                     null
-                })
+                }
             }
 
-            cardOptions.put(getString(R.string.takePhoto), Callable {
-                val permissionRequestType: Int = resourceIdToPermission(v.id)
-
+            cardOptions[getString(R.string.takePhoto)] = Callable {
                 PermissionUtils.requestCameraPermission(
                     this@LoyaltyCardEditActivity,
-                    permissionRequestType
+                    operation.cameraPermissionCode
                 )
                 null
-            })
+            }
 
-            cardOptions.put(getString(R.string.addFromImage), Callable {
-                val permissionRequestType: Int = when (v.id) {
-                    R.id.frontImageHolder -> PERMISSION_REQUEST_STORAGE_IMAGE_FRONT
-                    R.id.backImageHolder -> PERMISSION_REQUEST_STORAGE_IMAGE_BACK
-                    R.id.thumbnail -> PERMISSION_REQUEST_STORAGE_IMAGE_ICON
-                    else -> throw IllegalArgumentException("Unknown ID type ${v.id}")
-                }
-
+            cardOptions[getString(R.string.addFromImage)] = Callable {
                 PermissionUtils.requestStorageReadPermission(
                     this@LoyaltyCardEditActivity,
-                    permissionRequestType
+                    operation.storagePermissionCode
                 )
                 null
-            })
+            }
 
-            if (v.id == R.id.thumbnail) {
+            if (operation == ImageOperation.ICON) {
                 val imageFront = viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
                 if (imageFront != null) {
-                    cardOptions.put(
-                        getString(R.string.useFrontImage),
-                        Callable {
-                            setThumbnailImage(
-                                Utils.resizeBitmap(
-                                    imageFront,
-                                    Utils.BITMAP_SIZE_SMALL.toDouble()
-                                )
-                            )
-                            null
-                        })
+                    cardOptions[getString(R.string.useFrontImage)] = Callable {
+                        setThumbnailImage(
+                            Utils.resizeBitmap(imageFront, Utils.BITMAP_SIZE_SMALL.toDouble())
+                        )
+                        null
+                    }
                 }
 
                 val imageBack = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
                 if (imageBack != null) {
-                    cardOptions.put(getString(R.string.useBackImage), Callable {
+                    cardOptions[getString(R.string.useBackImage)] = Callable {
                         setThumbnailImage(
-                            Utils.resizeBitmap(
-                                imageBack,
-                                Utils.BITMAP_SIZE_SMALL.toDouble()
-                            )
+                            Utils.resizeBitmap(imageBack, Utils.BITMAP_SIZE_SMALL.toDouble())
                         )
                         null
-                    })
+                    }
                 }
             }
 
-            val titleResource: Int = when (v.id) {
-                R.id.frontImageHolder -> R.string.setFrontImage
-                R.id.backImageHolder -> R.string.setBackImage
-                R.id.thumbnail -> R.string.setIcon
-                else -> throw IllegalArgumentException("Unknown ID type " + v.id)
-            }
-
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
-                .setTitle(getString(titleResource))
-                .setItems(
-                    cardOptions.keys.toTypedArray<CharSequence?>()
-                ) { dialog: DialogInterface?, which: Int ->
-                    val callables: Iterator<Callable<Void>> =
-                        cardOptions.values.iterator()
+                .setTitle(getString(operation.titleResource))
+                .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { dialog: DialogInterface?, which: Int ->
+                    val callables = cardOptions.values.iterator()
                     var callable = callables.next()
-
                     for (i in 0..<which) {
                         callable = callables.next()
                     }
@@ -1390,8 +1347,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         callable.call()
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        // Rethrow as NoSuchElementException
-                        // This isn't really true, but a View.OnClickListener doesn't allow throwing other types
                         throw NoSuchElementException(e.message)
                     }
                 }
@@ -1680,12 +1635,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val destUri = ("file://" + cropOutput.absolutePath).toUri()
         Log.d("cropper", "asking cropper to output to $destUri")
 
-        if (requestedFrontImage()) {
-            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setFrontImage))
-        } else if (requestedBackImage()) {
-            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setBackImage))
-        } else if (requestedIcon()) {
-            mCropperOptions.setToolbarTitle(getResources().getString(R.string.setIcon))
+        val currentOperation = getCurrentImageOperation()
+        if (currentOperation != null) {
+            mCropperOptions.setToolbarTitle(getString(currentOperation.titleResource))
         } else {
             Toast.makeText(
                 this,
@@ -1828,10 +1780,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun generateIcon(store: String?) {
-        val headerColor = viewModel.loyaltyCard.headerColor
-        if (headerColor == null) {
-            return
-        }
+        val headerColor = viewModel.loyaltyCard.headerColor ?: return
+
         if (viewModel.loyaltyCard.getImageThumbnail(this) == null) {
             binding.thumbnail.setBackgroundColor(headerColor)
 
@@ -1900,11 +1850,69 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         return currencySymbols.get(currency.currencyCode)
     }
 
+    enum class ImageOperation(
+        val resourceId: Int,
+        val locationType: ImageLocationType,
+        val cameraPermissionCode: Int,
+        val storagePermissionCode: Int,
+        val cameraTypeConstant: Int,
+        val fileTypeConstant: Int,
+        val titleResource: Int
+    ) {
+        FRONT(
+            R.id.frontImageHolder,
+            ImageLocationType.front,
+            PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
+            PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
+            Utils.CARD_IMAGE_FROM_CAMERA_FRONT,
+            Utils.CARD_IMAGE_FROM_FILE_FRONT,
+            R.string.setFrontImage
+        ),
+        BACK(
+            R.id.backImageHolder,
+            ImageLocationType.back,
+            PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
+            PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
+            Utils.CARD_IMAGE_FROM_CAMERA_BACK,
+            Utils.CARD_IMAGE_FROM_FILE_BACK,
+            R.string.setBackImage
+        ),
+        ICON(
+            R.id.thumbnail,
+            ImageLocationType.icon,
+            PERMISSION_REQUEST_CAMERA_IMAGE_ICON,
+            PERMISSION_REQUEST_STORAGE_IMAGE_ICON,
+            Utils.CARD_IMAGE_FROM_CAMERA_ICON,
+            Utils.CARD_IMAGE_FROM_FILE_ICON,
+            R.string.setIcon
+        );
+
+        companion object {
+            fun fromResourceId(resourceId: Int): ImageOperation =
+                entries.find { it.resourceId == resourceId }
+                    ?: throw IllegalArgumentException("Unknown resource ID: $resourceId")
+
+            fun fromCameraPermission(permissionCode: Int): ImageOperation =
+                entries.find { it.cameraPermissionCode == permissionCode }
+                    ?: throw IllegalArgumentException("Unknown camera permission code: $permissionCode")
+
+            fun fromStoragePermission(permissionCode: Int): ImageOperation =
+                entries.find { it.storagePermissionCode == permissionCode }
+                    ?: throw IllegalArgumentException("Unknown storage permission code: $permissionCode")
+
+            fun fromImageType(imageType: Int): ImageOperation =
+                entries.find { it.cameraTypeConstant == imageType || it.fileTypeConstant == imageType }
+                    ?: throw IllegalArgumentException("Unknown image type: $imageType")
+        }
+
+        fun matches(imageType: Int): Boolean =
+            cameraTypeConstant == imageType || fileTypeConstant == imageType
+    }
+
     companion object {
         private const val TAG = "Catima"
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
-
 
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_FRONT = 100
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_BACK = 101
@@ -1934,24 +1942,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             } else {
                 textField.setText(DateFormat.getDateInstance(DateFormat.LONG).format(date))
             }
-        }
-        fun permissionToResourceId(permission:Int): Int {
-            val result = when (permission) {
-                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT -> R.id.frontImageHolder
-                PERMISSION_REQUEST_CAMERA_IMAGE_BACK -> R.id.backImageHolder
-                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> R.id.thumbnail
-                else -> throw IllegalArgumentException("Unknown permission Id $permission")
-            }
-            return result
-    }
-        fun resourceIdToPermission(resourceId:Int): Int {
-            val result = when (resourceId) {
-                R.id.frontImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_FRONT
-                R.id.backImageHolder -> PERMISSION_REQUEST_CAMERA_IMAGE_BACK
-                R.id.thumbnail -> PERMISSION_REQUEST_CAMERA_IMAGE_ICON
-                else -> throw IllegalArgumentException("Unknown resource Id $resourceId")
-            }
-            return result
         }
     }
 }

@@ -61,6 +61,7 @@ class LoyaltyCardEditActivityViewModel : ViewModel() {
 
     var tabIndex: Int = 0
     var requestedImageType: Int = 0
+    var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
     var tempLoyaltyCardField: LoyaltyCardField? = null
 
     var loyaltyCard: LoyaltyCard = LoyaltyCard()
