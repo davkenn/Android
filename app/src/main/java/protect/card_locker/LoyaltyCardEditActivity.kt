@@ -1080,9 +1080,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         onMockedRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
-    private fun performActionWithPermissionCheck(requestCode: Int, granted: Boolean): String? {
+    private fun performActionWithPermissionCheck(requestCode: Int, granted: Boolean): Int? {
         if (!granted) {
-            return "$requestCode permission denied by user"
+            return when (requestCode) {
+                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
+                PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
+                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> R.string.cameraPermissionRequired
+                PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
+                PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
+                PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> R.string.storageReadPermissionRequired
+                else -> R.string.generic_error_please_retry
+            }
         }
 
         try {
@@ -1102,7 +1110,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
         } catch (e: IllegalArgumentException) {
-            return "Unknown permission request code: $requestCode"
+            return R.string.generic_error_please_retry
         }
         return null
     }
@@ -1115,12 +1123,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     ) {
         val granted =
             grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-        var failureReason: String? = null
+        val failureReason = performActionWithPermissionCheck(requestCode, granted)
 
-        failureReason = performActionWithPermissionCheck(requestCode, granted)
-
-        failureReason?.let { reason ->
-            Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
+        failureReason?.let { resourceId ->
+            Toast.makeText(this, resourceId, Toast.LENGTH_LONG).show()
         }
     }
 
