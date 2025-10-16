@@ -1678,9 +1678,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 setCropperOptions(true, 0f, 0f)
             } else {
                 try {
+                    val inputStream = contentResolver.openInputStream(sourceUri)
+                        ?: throw FileNotFoundException("Could not open input stream for $sourceUri")
                     val imageRotated = Utils.rotateBitmap(
                         image,
-                        ExifInterface(contentResolver.openInputStream(sourceUri)!!)
+                        ExifInterface(inputStream)
                     )
                     setCropperOptions(
                         false,
