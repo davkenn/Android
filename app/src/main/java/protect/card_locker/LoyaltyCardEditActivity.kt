@@ -393,17 +393,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             override fun afterTextChanged(s: Editable?) {
                 val currencyList = ArrayList(currencies.keys)
-                Collections.sort(currencyList, Comparator { o1: String, o2: String ->
-                    val o1ascii = o1.matches("^[^a-zA-Z]*$".toRegex())
-                    val o2ascii = o2.matches("^[^a-zA-Z]*$".toRegex())
-
-                    if (!o1ascii && o2ascii) {
-                        return@Comparator 1
-                    } else if (o1ascii && !o2ascii) {
-                        return@Comparator -1
-                    }
-                    o1.compareTo(o2)
-                })
+                currencyList.sortWith(
+                    compareBy({ !it.matches("^[^a-zA-Z]*$".toRegex()) }, { it })
+                )
 
                 // Sort locale currencies on top
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
