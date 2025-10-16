@@ -581,7 +581,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             StartActivityForResult()
         ) { result: ActivityResult ->
             if (result.resultCode == RESULT_OK) {
-                val intent = result.data ?: run {
+                val intent = result.data
+                if (intent == null) {
                     Log.d("photo picker", "photo picker returned without an intent")
                     return@registerForActivityResult
                 }
