@@ -497,7 +497,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                     builder.setPositiveButton(
                         getString(R.string.ok)
-                    ) { dialog: DialogInterface?, which: Int ->
+                    ) { _, _ ->
                         // If the user manually changes the barcode again make sure we disable the
                         // request to update it to match the card id (if changed)
                         viewModel.tempStoredOldBarcodeValue = null
@@ -505,11 +505,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                     builder.setNegativeButton(
                         getString(R.string.cancel)
-                    ) { dialog: DialogInterface?, which: Int -> dialog!!.cancel() }
+                    ) { dialog, _ -> dialog.cancel() }
                     val dialog = builder.create()
                     dialog.show()
-                    dialog.window!!
-                        .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+                    dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
                     input.requestFocus()
                 } else {
                     setLoyaltyCardBarcodeId(s.toString())
@@ -593,21 +592,25 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // android 11: wanted to swap it to ActivityResultContracts.GetContent but then it shows a file browsers that shows image mime types, offering gallery in the file browser
         mPhotoPickerLauncher = registerForActivityResult(
             StartActivityForResult()
-        ) { result: ActivityResult? ->
-            if (result!!.resultCode == RESULT_OK) {
+        ) { result: ActivityResult ->
+            if (result.resultCode == RESULT_OK) {
                 val intent = result.data ?: run {
                     Log.d("photo picker", "photo picker returned without an intent")
                     return@registerForActivityResult
                 }
                 val uri = intent.data
-                startCropperUri(uri!!)
+                if (uri == null) {
+                    Log.d("photo picker", "photo picker returned intent without a uri")
+                    return@registerForActivityResult
+                }
+                startCropperUri(uri)
             }
         }
 
         mCardIdAndBarCodeEditorLauncher = registerForActivityResult(
             StartActivityForResult()
-        ) { result: ActivityResult? ->
-            if (result!!.resultCode == RESULT_OK) {
+        ) { result: ActivityResult ->
+            if (result.resultCode == RESULT_OK) {
                 val resultIntent = result.data
                 if (resultIntent == null) {
                     Log.d(TAG, "barcode and card id editor picker returned without an intent")
@@ -630,8 +633,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         mCropperLauncher = registerForActivityResult(
             StartActivityForResult()
-        ) { result: ActivityResult? ->
-            val intent = result!!.data
+        ) { result: ActivityResult ->
+            val intent = result.data
             if (intent == null) {
                 Log.d("cropper", "ucrop returned a null intent")
                 return@registerForActivityResult
@@ -1145,14 +1148,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .setMessage(R.string.updateBarcodeQuestionText)
             .setPositiveButton(
                 R.string.yes
-            ) { dialog: DialogInterface?, which: Int ->
+            ) { dialog, _ ->
                 barcodeIdField.setText(R.string.sameAsCardId)
-                dialog!!.dismiss()
+                dialog.dismiss()
             }
             .setNegativeButton(
                 R.string.no
-            ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
-            .setOnDismissListener { dialogInterface: DialogInterface? ->
+            ) { dialog, _ -> dialog.dismiss() }
+            .setOnDismissListener { _ ->
                 viewModel.tempStoredOldBarcodeValue?.let { value ->
                     barcodeIdField.setText(value)
                     viewModel.tempStoredOldBarcodeValue = null
@@ -1179,16 +1182,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             builder.setMessage(R.string.leaveWithoutSaveConfirmation)
             builder.setPositiveButton(
                 R.string.confirm
-            ) { dialog: DialogInterface?, which: Int ->
+            ) { dialog,_->
                 finish()
-                dialog!!.dismiss()
+                dialog.dismiss()
             }
             builder.setNegativeButton(
                 R.string.cancel
-            ) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
+            ) { dialog, _ -> dialog.dismiss() }
             confirmExitDialog = builder.create()
         }
-        confirmExitDialog!!.show()
+        confirmExitDialog?.show()
     }
 
 
@@ -1343,7 +1346,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
                 .setTitle(getString(operation.titleResource))
-                .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { dialog: DialogInterface?, which: Int ->
+                .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { _, which ->
                     val callables = cardOptions.values.iterator()
                     var callable = callables.next()
                     for (i in 0..<which) {
