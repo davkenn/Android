@@ -132,6 +132,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
     private lateinit var mSystemLocale: Locale
 
+    private fun <T> createDropdownAdapter(items: List<T>): ArrayAdapter<T> =
+        ArrayAdapter(this, android.R.layout.select_dialog_item, items)
+
     override fun attachBaseContext(base: Context?) {
         // store system locale
         mSystemLocale = Locale.getDefault()
@@ -416,12 +419,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
 
                 currencyList.add(0, getString(R.string.points))
-                val currencyAdapter = ArrayAdapter<String>(
-                    this@LoyaltyCardEditActivity,
-                    android.R.layout.select_dialog_item,
-                    currencyList
-                )
-                balanceCurrencyField.setAdapter(currencyAdapter)
+                balanceCurrencyField.setAdapter(createDropdownAdapter(currencyList))
             }
         })
 
@@ -518,12 +516,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val barcodeIdList = mutableListOf<String?>()
                 barcodeIdList.add(0, getString(R.string.sameAsCardId))
                 barcodeIdList.add(1, getString(R.string.setBarcodeId))
-                val barcodeIdAdapter = ArrayAdapter<String?>(
-                    this@LoyaltyCardEditActivity,
-                    android.R.layout.select_dialog_item,
-                    barcodeIdList
-                )
-                barcodeIdField.setAdapter(barcodeIdAdapter)
+                barcodeIdField.setAdapter(createDropdownAdapter(barcodeIdList))
             }
         })
 
@@ -554,12 +547,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun afterTextChanged(s: Editable?) {
                 val barcodeList = ArrayList<String?>(CatimaBarcode.barcodePrettyNames)
                 barcodeList.add(0, getString(R.string.noBarcode))
-                val barcodeAdapter = ArrayAdapter<String?>(
-                    this@LoyaltyCardEditActivity,
-                    android.R.layout.select_dialog_item,
-                    barcodeList
-                )
-                barcodeTypeField.setAdapter(barcodeAdapter)
+                barcodeTypeField.setAdapter(createDropdownAdapter(barcodeList))
             }
         })
 
@@ -1055,12 +1043,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val dropdownOptions = mutableListOf<String?>()
                 dropdownOptions.add(0, getString(defaultOptionStringId))
                 dropdownOptions.add(1, getString(chooseDateOptionStringId))
-                val dropdownOptionsAdapter = ArrayAdapter<String?>(
-                    this@LoyaltyCardEditActivity,
-                    android.R.layout.select_dialog_item,
-                    dropdownOptions
-                )
-                dateField.setAdapter(dropdownOptionsAdapter)
+                dateField.setAdapter(createDropdownAdapter(dropdownOptions))
             }
         })
     }
