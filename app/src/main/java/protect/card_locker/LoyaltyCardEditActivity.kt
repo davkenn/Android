@@ -119,8 +119,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     var confirmExitDialog: AlertDialog? = null
     var validBalance: Boolean = true
-    var currencies: MutableMap<String?, Currency?> = mutableMapOf()
-    var currencySymbols: MutableMap<String?, String?> = mutableMapOf()
+    lateinit var currencies: Map<String, Currency>
+    lateinit var currencySymbols: Map<String, String>
 
     private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri?>
     private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent?>
@@ -294,10 +294,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.initialized = true
         }
 
-        for (currency in Currency.getAvailableCurrencies()) {
-            currencies.put(currency.symbol, currency)
-            currencySymbols.put(currency.currencyCode, currency.symbol)
-        }
+        val availableCurrencies = Currency.getAvailableCurrencies()
+        currencies = availableCurrencies.associateBy { it.symbol }
+        currencySymbols = availableCurrencies.associate { it.currencyCode to it.symbol }
 
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
@@ -391,9 +390,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             override fun afterTextChanged(s: Editable?) {
                 val currencyList = ArrayList(currencies.keys)
-                Collections.sort<String?>(currencyList, Comparator { o1: String?, o2: String? ->
-                    val o1ascii = o1!!.matches("^[^a-zA-Z]*$".toRegex())
-                    val o2ascii = o2!!.matches("^[^a-zA-Z]*$".toRegex())
+                Collections.sort(currencyList, Comparator { o1: String, o2: String ->
+                    val o1ascii = o1.matches("^[^a-zA-Z]*$".toRegex())
+                    val o2ascii = o2.matches("^[^a-zA-Z]*$".toRegex())
 
                     if (!o1ascii && o2ascii) {
                         return@Comparator 1
@@ -417,7 +416,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
 
                 currencyList.add(0, getString(R.string.points))
-                val currencyAdapter = ArrayAdapter<String?>(
+                val currencyAdapter = ArrayAdapter<String>(
                     this@LoyaltyCardEditActivity,
                     android.R.layout.select_dialog_item,
                     currencyList
@@ -1846,7 +1845,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun currencyPrioritizeLocaleSymbols(currencyList: ArrayList<String?>, locale: Locale?) {
+    private fun currencyPrioritizeLocaleSymbols(currencyList: ArrayList<String>, locale: Locale?) {
         try {
             val currencySymbol = getCurrencySymbol(Currency.getInstance(locale))
             currencyList.remove(currencySymbol)
@@ -1856,9 +1855,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun getCurrencySymbol(currency: Currency): String? {
+    private fun getCurrencySymbol(currency: Currency): String {
         // Workaround for Android bug where the output of Currency.getSymbol() changes.
-        return currencySymbols.get(currency.currencyCode)
+        return currencySymbols[currency.currencyCode] ?: currency.symbol
     }
 
     enum class ImageOperation(
