@@ -1412,10 +1412,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.tempLoyaltyCardField = loyaltyCardField
         supportFragmentManager.addFragmentOnAttachListener { fragmentManager: FragmentManager?, fragment: Fragment? ->
             if (fragment is MaterialDatePicker<*> && fragment.tag == PICK_DATE_REQUEST_KEY) {
-                (fragment as MaterialDatePicker<Long?>).addOnPositiveButtonClickListener(
-                    MaterialPickerOnPositiveButtonClickListener { selection: Long? ->
+                (fragment as MaterialDatePicker<Long>).addOnPositiveButtonClickListener(
+                    MaterialPickerOnPositiveButtonClickListener { selection: Long ->
                         val args = Bundle()
-                        args.putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection!!)
+                        args.putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection)
                         supportFragmentManager.setFragmentResult(PICK_DATE_REQUEST_KEY, args)
                     })
             }
@@ -1428,10 +1428,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     // See https://github.com/material-components/material-components-android/issues/1688
     private fun setMaterialDatePickerResultListener() {
         val fragment =
-            supportFragmentManager.findFragmentByTag(PICK_DATE_REQUEST_KEY) as MaterialDatePicker<Long?>?
-        fragment?.addOnPositiveButtonClickListener(MaterialPickerOnPositiveButtonClickListener { selection: Long? ->
+            supportFragmentManager.findFragmentByTag(PICK_DATE_REQUEST_KEY) as MaterialDatePicker<Long>?
+        fragment?.addOnPositiveButtonClickListener(MaterialPickerOnPositiveButtonClickListener { selection: Long ->
             val args = Bundle()
-            args.putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection!!)
+            args.putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection)
             supportFragmentManager.setFragmentResult(PICK_DATE_REQUEST_KEY, args)
         })
 
