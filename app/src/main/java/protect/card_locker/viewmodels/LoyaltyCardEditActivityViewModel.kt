@@ -30,6 +30,16 @@ sealed interface SaveState {
     data class Error(val message: String) : SaveState
 }
 
+sealed interface CardLoadState {
+    object Loading : CardLoadState
+    data class Success(
+        val loyaltyCard: LoyaltyCard,
+        val allGroups: List<Group>,
+        val loyaltyCardGroups: List<Group>
+    ) : CardLoadState
+    data class Error(val message: String) : CardLoadState
+}
+
 class LoyaltyCardEditActivityViewModel(
     private val application: Application,
     private val cardRepository: CardRepository
@@ -42,6 +52,9 @@ class LoyaltyCardEditActivityViewModel(
 
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState = _saveState.asStateFlow()
+
+    private val _cardState = MutableStateFlow<CardLoadState>(CardLoadState.Loading)
+    val cardState = _cardState.asStateFlow()
 
     var tempStoredOldBarcodeValue: String? = null
 
@@ -88,6 +101,43 @@ class LoyaltyCardEditActivityViewModel(
 
     var loyaltyCard: LoyaltyCard = LoyaltyCard()
 
+    /**
+     * Loads card data from the repository and updates the cardState flow.
+     * @param cardId The ID of the card to load (0 for new card)
+     * @param importUri Optional URI to import card from
+     * @param isDuplicate If true, loads card but clears ID for duplication
+     */
+    fun loadCard(
+        cardId: Int = 0,
+        importUri: Uri? = null,
+        isDuplicate: Boolean = false
+    ) {
+        // Set loading state
+        _cardState.value = CardLoadState.Loading
+
+        viewModelScope.launch {
+            val result = cardRepository.loadCardData(cardId, importUri, isDuplicate)
+
+            _cardState.value = result.fold(
+                onSuccess = { data ->
+                    // Update the ViewModel's loyaltyCard reference
+                    loyaltyCard = data.loyaltyCard
+
+                    // Return success state with all loaded data
+                    CardLoadState.Success(
+                        loyaltyCard = data.loyaltyCard,
+                        allGroups = data.allGroups,
+                        loyaltyCardGroups = data.loyaltyCardGroups
+                    )
+                },
+                onFailure = { exception ->
+                    CardLoadState.Error(
+                        exception.message ?: "An unknown error occurred while loading card data."
+                    )
+                }
+            )
+        }
+    }
 
     fun saveCard(selectedGroups: List<Group>) {
         if (_saveState.value is SaveState.Saving) return // Debounce if already saving
