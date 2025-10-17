@@ -33,7 +33,7 @@ sealed interface SaveState {
 sealed interface CardLoadState {
     object Loading : CardLoadState
     data class Success(
-        val loyaltyCard: LoyaltyCard,
+        var loyaltyCard: LoyaltyCard,
         val allGroups: List<Group>,
         val loyaltyCardGroups: List<Group>
     ) : CardLoadState
@@ -99,11 +99,31 @@ class LoyaltyCardEditActivityViewModel(
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
     var tempLoyaltyCardField: LoyaltyCardField? = null
 
-    var loyaltyCard: LoyaltyCard = LoyaltyCard()
+    /**
+     * Single source of truth: access the current loyalty card from cardState.
+     * Returns the loaded card or a new card if not yet loaded.
+     */
+    var loyaltyCard: LoyaltyCard
+        get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCard ?: LoyaltyCard()
+        set(value) {
+            // When setting the card, we need to update the state
+            val currentState = _cardState.value
+            if (currentState is CardLoadState.Success) {
+                _cardState.value = currentState.copy(loyaltyCard = value)
+            }
+        }
 
-    // Store loaded groups data
-    var allGroups: List<Group> = emptyList()
-    var loyaltyCardGroups: List<Group> = emptyList()
+    /**
+     * Access all groups from the current cardState.
+     */
+    val allGroups: List<Group>
+        get() = (_cardState.value as? CardLoadState.Success)?.allGroups ?: emptyList()
+
+    /**
+     * Access loyalty card groups from the current cardState.
+     */
+    val loyaltyCardGroups: List<Group>
+        get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCardGroups ?: emptyList()
 
     /**
      * Loads card data from the repository and updates the cardState flow.
@@ -124,12 +144,7 @@ class LoyaltyCardEditActivityViewModel(
 
             _cardState.value = result.fold(
                 onSuccess = { data ->
-                    // Update the ViewModel's data references
-                    loyaltyCard = data.loyaltyCard
-                    allGroups = data.allGroups
-                    loyaltyCardGroups = data.loyaltyCardGroups
-
-                    // Return success state with all loaded data
+                    // Single source of truth: store everything in cardState
                     CardLoadState.Success(
                         loyaltyCard = data.loyaltyCard,
                         allGroups = data.allGroups,
