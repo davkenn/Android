@@ -624,38 +624,37 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
 
                 if (bitmap != null) {
-                    if (requestedFrontImage()) {
-                        setCardImage(
+                    when {
+                        requestedFrontImage() -> setCardImage(
                             ImageLocationType.front,
                             cardImageFront,
                             Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
                             true
                         )
-                    } else if (requestedBackImage()) {
-                        setCardImage(
+                        requestedBackImage() -> setCardImage(
                             ImageLocationType.back,
                             cardImageBack,
                             Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
                             true
                         )
-                    } else if (requestedIcon()) {
-                        setThumbnailImage(
+                        requestedIcon() -> setThumbnailImage(
                             Utils.resizeBitmap(
                                 bitmap,
                                 Utils.BITMAP_SIZE_SMALL.toDouble()
                             )
                         )
-                    } else {
-                        Toast.makeText(
-                            this,
-                            R.string.generic_error_please_retry,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@registerForActivityResult
+                        else -> {
+                            Toast.makeText(
+                                this,
+                                R.string.generic_error_please_retry,
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@registerForActivityResult
+                        }
                     }
                     Log.d("cropper", "requestedImageType: ${viewModel.requestedImageType}")
                     viewModel.hasChanged = true
-                    
+
                     // Clean up temporary files after successful image processing
                     cleanUpTempImages()
                 } else {
