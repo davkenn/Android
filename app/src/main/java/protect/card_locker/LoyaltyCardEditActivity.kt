@@ -719,10 +719,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         mCropperOptions.setFreeStyleCropEnabled(true)
         mCropperOptions.setHideBottomControls(false)
         // default aspect ratio workaround
-        var selectedByDefault = 1
-        if (cardShapeDefault) {
-            selectedByDefault = 2
-        }
+        val selectedByDefault = if (cardShapeDefault) 2 else 1
         mCropperOptions.setAspectRatioOptions(
             selectedByDefault,
             AspectRatio(null, 1f, 1f),
@@ -868,11 +865,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         if (viewModel.loyaltyCard.headerColor == null) {
             // If name is set, pick colour relevant for name. Otherwise pick randomly
-            setLoyaltyCardHeaderColor(
-                if (viewModel.loyaltyCard.store.isEmpty()) Utils.getRandomHeaderColor(
-                    this
-                ) else Utils.getHeaderColor(this, viewModel.loyaltyCard)
-            )
+            val color = if (viewModel.loyaltyCard.store.isEmpty())
+                Utils.getRandomHeaderColor(this)
+            else Utils.getHeaderColor(this, viewModel.loyaltyCard)
+            setLoyaltyCardHeaderColor(color)
         }
 
         setThumbnailImage(viewModel.loyaltyCard.getImageThumbnail(this))
@@ -1314,13 +1310,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
                 .setTitle(getString(operation.titleResource))
                 .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { _, which ->
-                    val callables = cardOptions.values.iterator()
-                    var callable = callables.next()
-                    for (i in 0..<which) {
-                        callable = callables.next()
-                    }
                     try {
-                        callable.call()
+                        cardOptions.values.toList()[which].call()
                     } catch (e: Exception) {
                         e.printStackTrace()
                         throw NoSuchElementException(e.message)
@@ -1703,9 +1694,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun generateBarcode() {
-
-        val cardIdString =
-            if (viewModel.loyaltyCard.barcodeId != null) viewModel.loyaltyCard.barcodeId else viewModel.loyaltyCard.cardId
+        val cardIdString = viewModel.loyaltyCard.barcodeId ?: viewModel.loyaltyCard.cardId
         val barcodeFormat = viewModel.loyaltyCard.barcodeType
 
         if (cardIdString == null || cardIdString.isEmpty() || barcodeFormat == null) {
