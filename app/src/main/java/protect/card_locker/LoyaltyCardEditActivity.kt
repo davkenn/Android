@@ -92,10 +92,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     lateinit var viewModel: LoyaltyCardEditActivityViewModel
     private lateinit var binding: LoyaltyCardEditActivityBinding
 
-    private val TEMP_CAMERA_IMAGE_NAME =
-        LoyaltyCardEditActivity::class.java.simpleName + "_camera_image.jpg"
-    private val TEMP_CROP_IMAGE_NAME =
-        LoyaltyCardEditActivity::class.java.simpleName + "_crop_image.png"
+    private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
+    private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
     private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
 
     private lateinit var groupChips: ChipGroup
@@ -211,7 +209,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             // Retrieve from database
             val loyaltyCard = DBHelper.getLoyaltyCard(this, mDatabase, viewModel.loyaltyCardId)
             if (loyaltyCard == null) {
-                Log.w(TAG, "Could not lookup loyalty card " + viewModel.loyaltyCardId)
+                Log.w(TAG, "Could not lookup loyalty card ${viewModel.loyaltyCardId}")
                 Toast.makeText(this, R.string.noCardExistsError, Toast.LENGTH_LONG).show()
                 finish()
                 return false
@@ -235,10 +233,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.loyaltyCard = loyaltyCard
         }
 
-        Log.d(
-            TAG, ("Edit activity: id=" + viewModel.loyaltyCardId
-                    + ", updateLoyaltyCard=" + viewModel.updateLoyaltyCard)
-        )
+        Log.d(TAG, "Edit activity: id=${viewModel.loyaltyCardId}, updateLoyaltyCard=${viewModel.updateLoyaltyCard}")
 
         return true
     }
@@ -658,7 +653,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         ).show()
                         return@registerForActivityResult
                     }
-                    Log.d("cropper", "requestedImageType: " + viewModel.requestedImageType)
+                    Log.d("cropper", "requestedImageType: ${viewModel.requestedImageType}")
                     viewModel.hasChanged = true
                     
                     // Clean up temporary files after successful image processing
@@ -795,7 +790,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     override fun onResume() {
         super.onResume()
 
-        Log.i(TAG, "To view card: " + viewModel.loyaltyCardId)
+        Log.i(TAG, "To view card: ${viewModel.loyaltyCardId}")
 
         viewModel.onResuming = true
 
@@ -1614,9 +1609,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     fun startCropperUri(sourceUri: Uri) {
-        Log.d("cropper", "launching cropper with image " + sourceUri.path)
+        Log.d("cropper", "launching cropper with image ${sourceUri.path}")
         val cropOutput = Utils.createTempFile(this, TEMP_CROP_IMAGE_NAME)
-        val destUri = ("file://" + cropOutput.absolutePath).toUri()
+        val destUri = "file://${cropOutput.absolutePath}".toUri()
         Log.d("cropper", "asking cropper to output to $destUri")
 
         val currentOperation = getCurrentImageOperation()
@@ -1922,7 +1917,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val text = when (textField.id) {
                     R.id.validFromField -> context.getString(R.string.anyDate)
                     R.id.expiryField -> context.getString(R.string.never)
-                    else -> throw IllegalArgumentException("Unknown textField Id " + textField.id)
+                    else -> throw IllegalArgumentException("Unknown textField Id ${textField.id}")
                 }
                 textField.setText(text)
             } else {
