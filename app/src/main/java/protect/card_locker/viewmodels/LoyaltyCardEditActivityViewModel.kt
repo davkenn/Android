@@ -101,6 +101,10 @@ class LoyaltyCardEditActivityViewModel(
 
     var loyaltyCard: LoyaltyCard = LoyaltyCard()
 
+    // Store loaded groups data
+    var allGroups: List<Group> = emptyList()
+    var loyaltyCardGroups: List<Group> = emptyList()
+
     /**
      * Loads card data from the repository and updates the cardState flow.
      * @param cardId The ID of the card to load (0 for new card)
@@ -120,8 +124,10 @@ class LoyaltyCardEditActivityViewModel(
 
             _cardState.value = result.fold(
                 onSuccess = { data ->
-                    // Update the ViewModel's loyaltyCard reference
+                    // Update the ViewModel's data references
                     loyaltyCard = data.loyaltyCard
+                    allGroups = data.allGroups
+                    loyaltyCardGroups = data.loyaltyCardGroups
 
                     // Return success state with all loaded data
                     CardLoadState.Success(
