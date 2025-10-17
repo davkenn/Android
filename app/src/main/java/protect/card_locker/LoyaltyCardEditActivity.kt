@@ -88,6 +88,7 @@ import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import protect.card_locker.viewmodels.CardLoadState
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
 import java.io.File
@@ -203,49 +204,50 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.hasChanged = true
     }
 
-    /* Extract intent fields and return if code should keep running */
-    private fun extractIntentFields(intent: Intent): Boolean {
+    /**
+     * Data class to hold parsed Intent data
+     */
+    private data class IntentData(
+        val cardId: Int,
+        val importUri: Uri?,
+        val isDuplicate: Boolean,
+        val addGroup: String?,
+        val openSetIconMenu: Boolean,
+        val bundleOverrides: Bundle?
+    )
+
+    /**
+     * Parses the Intent and extracts all necessary data for loading the card.
+     * This keeps Intent parsing in the Activity where it belongs.
+     */
+    private fun parseIntentData(intent: Intent): IntentData {
         val b = intent.extras
-        viewModel.addGroup = b?.getString(BUNDLE_ADDGROUP)
-        viewModel.openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
-        viewModel.loyaltyCardId = b?.getInt(BUNDLE_ID) ?: 0
-        viewModel.updateLoyaltyCard = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
-        viewModel.duplicateFromLoyaltyCardId = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
-        viewModel.importLoyaltyCardUri = intent.data
 
-        val importLoyaltyCardUri = viewModel.importLoyaltyCardUri
-        // If we have to import a loyalty card, do so
-        if (viewModel.updateLoyaltyCard || viewModel.duplicateFromLoyaltyCardId) {
-            // Retrieve from database
-            val loyaltyCard = DBHelper.getLoyaltyCard(this, mDatabase, viewModel.loyaltyCardId)
-            if (loyaltyCard == null) {
-                Log.w(TAG, "Could not lookup loyalty card ${viewModel.loyaltyCardId}")
-                Toast.makeText(this, R.string.noCardExistsError, Toast.LENGTH_LONG).show()
-                finish()
-                return false
-            }
-            viewModel.loyaltyCard = loyaltyCard
-        } else if (importLoyaltyCardUri != null) {
-            // Load from URI
-            try {
-                viewModel.loyaltyCard = ImportURIHelper(this).parse(importLoyaltyCardUri)
-            } catch (_: InvalidObjectException) {
-                Toast.makeText(this, R.string.failedParsingImportUriError, Toast.LENGTH_LONG).show()
-                finish()
-                return false
-            }
-        }
+        val cardId = b?.getInt(BUNDLE_ID) ?: 0
+        val importUri = intent.data
+        val isUpdate = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
+        val isDuplicate = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
+        val addGroup = b?.getString(BUNDLE_ADDGROUP)
+        val openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
 
-        // If the intent contains any loyalty card fields, override those fields in our current temp card
-        if (b != null) {
-            val loyaltyCard = viewModel.loyaltyCard
-            loyaltyCard.updateFromBundle(b, false)
-            viewModel.loyaltyCard = loyaltyCard
-        }
+        // Store flags in ViewModel for later use
+        viewModel.loyaltyCardId = cardId
+        viewModel.updateLoyaltyCard = isUpdate
+        viewModel.duplicateFromLoyaltyCardId = isDuplicate
+        viewModel.importLoyaltyCardUri = importUri
+        viewModel.addGroup = addGroup
+        viewModel.openSetIconMenu = openSetIconMenu
 
-        Log.d(TAG, "Edit activity: id=${viewModel.loyaltyCardId}, updateLoyaltyCard=${viewModel.updateLoyaltyCard}")
+        Log.d(TAG, "Edit activity: id=$cardId, isUpdate=$isUpdate, isDuplicate=$isDuplicate")
 
-        return true
+        return IntentData(
+            cardId = cardId,
+            importUri = importUri,
+            isDuplicate = isDuplicate,
+            addGroup = addGroup,
+            openSetIconMenu = openSetIconMenu,
+            bundleOverrides = b
+        )
     }
 
     public override fun onSaveInstanceState(savedInstanceState: Bundle) {
@@ -290,15 +292,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         mDatabase = DBHelper(this).writableDatabase
 
-        viewModel.openSetIconMenu = intent.getBooleanExtra(
-            BUNDLE_OPEN_SET_ICON_MENU,
-            false
-        )
-
+        // Parse Intent and load card data via ViewModel
         if (!viewModel.initialized) {
-            if (!extractIntentFields(intent)) {
-                return
-            }
+            val intentData = parseIntentData(intent)
+
+            // Trigger card loading in ViewModel
+            viewModel.loadCard(
+                cardId = intentData.cardId,
+                importUri = intentData.importUri,
+                isDuplicate = intentData.isDuplicate
+            )
+
             viewModel.initialized = true
         }
 
