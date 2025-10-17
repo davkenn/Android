@@ -1058,7 +1058,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 else -> R.string.generic_error_please_retry
             }
         }
-
+//this try isnt functionally identical to the java
         try {
             when (requestCode) {
                 PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
@@ -1087,8 +1087,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         permissions: Array<String?>,
         grantResults: IntArray
     ) {
-        val granted =
-            grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
         val failureReason = performActionWithPermissionCheck(requestCode, granted)
 
         failureReason?.let { resourceId ->
@@ -1101,7 +1100,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             // They are the same, don't ask
             barcodeIdField.setText(R.string.sameAsCardId)
             viewModel.tempStoredOldBarcodeValue = null
-
             callback?.run()
             return
         }
@@ -1109,15 +1107,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.updateBarcodeQuestionTitle)
             .setMessage(R.string.updateBarcodeQuestionText)
-            .setPositiveButton(
-                R.string.yes
-            ) { dialog, _ ->
+            .setPositiveButton(R.string.yes) { dialog, _ ->
                 barcodeIdField.setText(R.string.sameAsCardId)
                 dialog.dismiss()
             }
-            .setNegativeButton(
-                R.string.no
-            ) { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton(R.string.no) { dialog, _ -> dialog.dismiss() }
             .setOnDismissListener { _ ->
                 viewModel.tempStoredOldBarcodeValue?.let { value ->
                     barcodeIdField.setText(value)
@@ -1134,7 +1128,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 askBarcodeChange { this.askBeforeQuitIfChanged() }
                 return
             }
-
             finish()
             return
         }
@@ -1143,15 +1136,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             val builder: AlertDialog.Builder = MaterialAlertDialogBuilder(this)
             builder.setTitle(R.string.leaveWithoutSaveTitle)
             builder.setMessage(R.string.leaveWithoutSaveConfirmation)
-            builder.setPositiveButton(
-                R.string.confirm
-            ) { dialog,_->
+            builder.setPositiveButton(R.string.confirm) { dialog,_->
                 finish()
                 dialog.dismiss()
             }
-            builder.setNegativeButton(
-                R.string.cancel
-            ) { dialog, _ -> dialog.dismiss() }
+            builder.setNegativeButton(R.string.cancel) { dialog, _ -> dialog.dismiss() }
             confirmExitDialog = builder.create()
         }
         confirmExitDialog?.show()
@@ -1219,11 +1208,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     internal inner class EditCardIdAndBarcode : View.OnClickListener {
         override fun onClick(v: View?) {
             val i = Intent(applicationContext, ScanActivity::class.java)
-            val b = Bundle()
-            b.putString(
+            val b = Bundle().apply { putString(
                 LoyaltyCard.BUNDLE_LOYALTY_CARD_CARD_ID,
                 cardIdFieldView.text.toString()
-            )
+                )
+            }
             i.putExtras(b)
             mCardIdAndBarCodeEditorLauncher.launch(i)
         }
