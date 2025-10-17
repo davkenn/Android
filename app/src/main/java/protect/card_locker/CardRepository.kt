@@ -1,6 +1,7 @@
 package protect.card_locker
 
 import android.content.Context
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import protect.card_locker.DBHelper
@@ -10,6 +11,16 @@ import protect.card_locker.LoyaltyCard
 import protect.card_locker.ShortcutHelper
 import protect.card_locker.Utils
 import java.io.FileNotFoundException
+import java.io.InvalidObjectException
+
+/**
+ * Data class bundling all the data needed for the card edit screen.
+ */
+data class LoadedCardData(
+    val loyaltyCard: LoyaltyCard,
+    val allGroups: List<Group>,
+    val loyaltyCardGroups: List<Group>
+)
 
 /**
  * Repository for handling all data operations related to Loyalty Cards.
@@ -64,6 +75,75 @@ class CardRepository(context: Context) {
 
             // Return the ID on success
             Result.success(cardId)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Loads all necessary data for the card edit screen.
+     * @param cardId The ID of the card to load (0 for new card)
+     * @param importUri Optional URI to import card data from
+     * @param isDuplicate If true, loads the card but clears its ID (for duplicating)
+     * @return Result containing LoadedCardData or an error
+     */
+    suspend fun loadCardData(
+        cardId: Int = 0,
+        importUri: Uri? = null,
+        isDuplicate: Boolean = false
+    ): Result<LoadedCardData> = withContext(Dispatchers.IO) {
+        try {
+            // Determine which card to load based on the parameters
+            val loyaltyCard = when {
+                importUri != null -> {
+                    // Load card from URI (import case)
+                    try {
+                        ImportURIHelper(appContext).parse(importUri)
+                    } catch (e: InvalidObjectException) {
+                        throw Exception("Failed to parse card from URI: ${e.message}")
+                    }
+                }
+                cardId > 0 -> {
+                    // Load existing card from database
+                    val card = DBHelper.getLoyaltyCard(appContext, mDatabase, cardId)
+                        ?: throw Exception("Card with ID $cardId not found in database")
+
+                    if (isDuplicate) {
+                        // Duplicate mode: reset the ID to 0 so it saves as a new card
+                        card.id = 0
+                        card
+                    } else {
+                        // Normal edit mode
+                        card
+                    }
+                }
+                else -> {
+                    // New card case (default)
+                    LoyaltyCard()
+                }
+            }
+
+            // Fetch all available groups
+            val allGroups = DBHelper.getGroups(mDatabase)
+
+            // Fetch the groups this card currently belongs to
+            // (only if editing an existing card, not for new/duplicate/import)
+            val loyaltyCardGroups = if (cardId > 0 && !isDuplicate) {
+                DBHelper.getLoyaltyCardGroups(mDatabase, cardId)
+            } else {
+                emptyList()
+            }
+
+            // Bundle everything together and return
+            val loadedData = LoadedCardData(
+                loyaltyCard = loyaltyCard,
+                allGroups = allGroups,
+                loyaltyCardGroups = loyaltyCardGroups
+            )
+
+            Result.success(loadedData)
+
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
