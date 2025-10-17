@@ -500,10 +500,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val barcodeIdList = mutableListOf<String?>()
-                barcodeIdList.add(0, getString(R.string.sameAsCardId))
-                barcodeIdList.add(1, getString(R.string.setBarcodeId))
-                barcodeIdField.setAdapter(createDropdownAdapter(barcodeIdList))
+                barcodeIdField.setAdapter(createDropdownAdapter(
+                    listOf(getString(R.string.sameAsCardId), getString(R.string.setBarcodeId))
+                ))
             }
         })
 
@@ -532,9 +531,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val barcodeList = ArrayList<String?>(CatimaBarcode.barcodePrettyNames)
-                barcodeList.add(0, getString(R.string.noBarcode))
-                barcodeTypeField.setAdapter(createDropdownAdapter(barcodeList))
+                barcodeTypeField.setAdapter(createDropdownAdapter(
+                    listOf(getString(R.string.noBarcode)) + CatimaBarcode.barcodePrettyNames
+                ))
             }
         })
 
@@ -1027,10 +1026,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val dropdownOptions = mutableListOf<String?>()
-                dropdownOptions.add(0, getString(defaultOptionStringId))
-                dropdownOptions.add(1, getString(chooseDateOptionStringId))
-                dateField.setAdapter(createDropdownAdapter(dropdownOptions))
+                dateField.setAdapter(createDropdownAdapter(
+                    listOf(getString(defaultOptionStringId), getString(chooseDateOptionStringId))
+                ))
             }
         })
     }
