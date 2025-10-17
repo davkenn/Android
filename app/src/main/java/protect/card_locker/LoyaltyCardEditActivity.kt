@@ -85,7 +85,11 @@ import androidx.core.net.toUri
 import androidx.core.os.registerForAllProfilingResults
 import androidx.core.view.size
 import androidx.core.view.isEmpty
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
+import protect.card_locker.viewmodels.SaveState
 import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback,
@@ -685,6 +689,51 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 askBeforeQuitIfChanged()
             }
         })
+        lifecycleScope.launch {
+            viewModel.saveState.collectLatest { state ->
+                // This 'when' block will execute every time the saveState changes
+                when (state) {
+                    is SaveState.Idle -> {
+                        // The initial state, or after an operation is complete.
+                        // Make sure the save button is enabled.
+                        binding.fabSave.isEnabled = true
+                    }
+
+                    is SaveState.Saving -> {
+                        // The save operation has started.
+                        // Disable the save button to prevent multiple clicks and show a message.
+                        binding.fabSave.isEnabled = false
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            "Saving...",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    is SaveState.Success -> {
+                        // The save was successful! Show a confirmation and finish the activity.
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            "Card saved successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        viewModel.onSaveComplete() // Reset the state in the ViewModel
+                        finish() // This is the navigation part you were asking about
+                    }
+
+                    is SaveState.Error -> {
+                        // An error occurred. Show the error message.
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            "Error: ${state.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        binding.fabSave.isEnabled = true
+                        viewModel.onSaveComplete() // Reset the state
+                    }
+                }
+            }
+        }
     }
 
     private fun cleanUpTempImages() {
