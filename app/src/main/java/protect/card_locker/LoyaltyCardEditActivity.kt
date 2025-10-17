@@ -1490,43 +1490,31 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
     private fun doSave() {
-        if (isFinishing) {
-            // If we are done saving, ignore any queued up save button presses
+        if (isFinishing || viewModel.saveState.value is SaveState.Saving) {
+            // Don't do anything if the activity is closing or a save is already in progress.
             return
         }
 
-        viewModel.tempStoredOldBarcodeValue?.let {
-            askBarcodeChange { this.doSave() }
-            return
-        }
-
+        // This part stays in the Activity because it's UI validation.
         var hasError = false
-
-        if (viewModel.loyaltyCard.store.isEmpty()) {
+        if (binding.storeNameEdit.text.toString().trim().isEmpty()) {
             binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
-
-            // Focus element
-            selectTab(0)
+            selectTab(0) // Helper function to switch to the correct tab
             binding.storeNameEdit.requestFocus()
-
             hasError = true
         }
 
-        if (viewModel.loyaltyCard.cardId.isEmpty()) {
-            cardIdFieldView.error = getString(R.string.field_must_not_be_empty)
-
-            // Focus element if first error element
+        if (binding.cardIdView.text.toString().isEmpty()) {
+            binding.cardIdView.error = getString(R.string.field_must_not_be_empty)
             if (!hasError) {
                 selectTab(0)
-                cardIdFieldView.requestFocus()
+                binding.cardIdView.requestFocus()
                 hasError = true
             }
         }
 
-        if (!validBalance) {
+        if (!validBalance) { // Assuming validBalance is still managed by the Activity's text watchers
             balanceField.error = getString(R.string.balanceParsingFailed)
-
-            // Focus element if first error element
             if (!hasError) {
                 selectTab(1)
                 balanceField.requestFocus()
@@ -1537,90 +1525,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (hasError) {
             return
         }
-
-        val selectedGroups: MutableList<Group?> = mutableListOf()
-
-        for (chipId in groupChips.checkedChipIds) {
-            val chip = groupChips.findViewById<Chip>(chipId)
-            selectedGroups.add(chip.tag as Group?)
+        // All validation passed. Get the selected groups and tell the ViewModel to save.
+        val selectedGroups = mutableListOf<Group>()
+        for (chipId in binding.groupChips.checkedChipIds) {
+            val chip = binding.groupChips.findViewById<Chip>(chipId)
+            chip?.tag?.let {
+                selectedGroups.add(it as Group)
+            }
         }
 
-        // Both update and new card save with lastUsed set to null
-        // This makes the DBHelper set it to the current date
-        // So that new and edited card are always on top when sorting by recently used
-        if (viewModel.updateLoyaltyCard) {
-            DBHelper.updateLoyaltyCard(
-                mDatabase,
-                viewModel.loyaltyCardId,
-                viewModel.loyaltyCard.store,
-                viewModel.loyaltyCard.note,
-                viewModel.loyaltyCard.validFrom,
-                viewModel.loyaltyCard.expiry,
-                viewModel.loyaltyCard.balance,
-                viewModel.loyaltyCard.balanceType,
-                viewModel.loyaltyCard.cardId,
-                viewModel.loyaltyCard.barcodeId,
-                viewModel.loyaltyCard.barcodeType,
-                viewModel.loyaltyCard.headerColor,
-                viewModel.loyaltyCard.starStatus,
-                null,
-                viewModel.loyaltyCard.archiveStatus
-            )
-        } else {
-            viewModel.loyaltyCardId = DBHelper.insertLoyaltyCard(
-                mDatabase,
-                viewModel.loyaltyCard.store,
-                viewModel.loyaltyCard.note,
-                viewModel.loyaltyCard.validFrom,
-                viewModel.loyaltyCard.expiry,
-                viewModel.loyaltyCard.balance,
-                viewModel.loyaltyCard.balanceType,
-                viewModel.loyaltyCard.cardId,
-                viewModel.loyaltyCard.barcodeId,
-                viewModel.loyaltyCard.barcodeType,
-                viewModel.loyaltyCard.headerColor,
-                0,
-                null,
-                0
-            ).toInt()
-        }
-
-        try {
-            Utils.saveCardImage(
-                this,
-                viewModel.loyaltyCard.getImageFront(this),
-                viewModel.loyaltyCardId,
-                ImageLocationType.front
-            )
-            Utils.saveCardImage(
-                this,
-                viewModel.loyaltyCard.getImageBack(this),
-                viewModel.loyaltyCardId,
-                ImageLocationType.back
-            )
-            Utils.saveCardImage(
-                this,
-                viewModel.loyaltyCard.getImageThumbnail(this),
-                viewModel.loyaltyCardId,
-                ImageLocationType.icon
-            )
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
-        }
-
-        DBHelper.setLoyaltyCardGroups(mDatabase, viewModel.loyaltyCardId, selectedGroups)
-
-        ShortcutHelper.updateShortcuts(
-            this,
-            DBHelper.getLoyaltyCard(this, mDatabase, viewModel.loyaltyCardId)
-        )
-
-        if (viewModel.duplicateFromLoyaltyCardId) {
-            val intent = Intent(applicationContext, MainActivity::class.java)
-            startActivity(intent)
-        }
-
-        finish()
+        viewModel.saveCard(selectedGroups)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -1925,20 +1839,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         private const val TAG = "Catima"
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
-
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_FRONT = 100
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_BACK = 101
         private const val PERMISSION_REQUEST_CAMERA_IMAGE_ICON = 102
         private const val PERMISSION_REQUEST_STORAGE_IMAGE_FRONT = 103
         private const val PERMISSION_REQUEST_STORAGE_IMAGE_BACK = 104
         private const val PERMISSION_REQUEST_STORAGE_IMAGE_ICON = 105
-
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
         const val BUNDLE_UPDATE: String = "update"
         const val BUNDLE_OPEN_SET_ICON_MENU: String = "openSetIconMenu"
         const val BUNDLE_ADDGROUP: String = "addGroup"
-
 
         @JvmStatic
         fun formatDateField(context: Context, textField: EditText, date: Date?) {
