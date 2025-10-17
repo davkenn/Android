@@ -693,6 +693,37 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 askBeforeQuitIfChanged()
             }
         })
+        // Observe card loading state
+        lifecycleScope.launch {
+            viewModel.cardState.collectLatest { state ->
+                when (state) {
+                    is CardLoadState.Loading -> {
+                        // Show loading state if needed
+                        Log.d(TAG, "Loading card data...")
+                    }
+
+                    is CardLoadState.Success -> {
+                        // Card data loaded successfully
+                        Log.d(TAG, "Card data loaded successfully")
+                        // Data is already in viewModel.loyaltyCard
+                        // onResume() will handle the UI binding
+                    }
+
+                    is CardLoadState.Error -> {
+                        // Failed to load card
+                        Log.e(TAG, "Failed to load card: ${state.message}")
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            state.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                    }
+                }
+            }
+        }
+
+        // Observe save state
         lifecycleScope.launch {
             viewModel.saveState.collectLatest { state ->
                 // This 'when' block will execute every time the saveState changes
@@ -883,10 +914,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         Log.d(TAG, "Setting balance to $balance")
 
         if (groupChips.isEmpty()) {
-            val existingGroups = DBHelper.getGroups(mDatabase)
-
-            val loyaltyCardGroups =
-                DBHelper.getLoyaltyCardGroups(mDatabase, viewModel.loyaltyCardId)
+            // Use groups loaded by ViewModel instead of direct database access
+            val existingGroups = viewModel.allGroups
+            val loyaltyCardGroups = viewModel.loyaltyCardGroups
 
             if (existingGroups.isEmpty()) {
                 groupChips.visibility = View.GONE
@@ -894,7 +924,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 groupChips.visibility = View.VISIBLE
             }
 
-            for (group in DBHelper.getGroups(mDatabase)) {
+            for (group in existingGroups) {
                 val chipChoiceBinding = LayoutChipChoiceBinding
                     .inflate(LayoutInflater.from(groupChips.context), groupChips, false)
                 val chip = chipChoiceBinding.getRoot()
