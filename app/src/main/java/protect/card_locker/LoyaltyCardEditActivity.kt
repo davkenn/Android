@@ -1014,9 +1014,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                     showDatePicker(
                         loyaltyCardField,
-                        dateField.tag as Date?,  // if the expiry date is being set, set date picker's minDate to the 'valid from' date
-                        if (loyaltyCardField == LoyaltyCardField.expiry) validFromField.tag as Date? else null,  // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
-                        if (loyaltyCardField == LoyaltyCardField.validFrom) expiryField.tag as Date? else null
+                        dateField.tag as Date?,
+                        if (loyaltyCardField == LoyaltyCardField.expiry) validFromField.tag as Date? else null,// if the expiry date is being set, set date picker's minDate to the 'valid from' date
+
+                        if (loyaltyCardField == LoyaltyCardField.validFrom) expiryField.tag as Date? else null // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
                     )
                 }
             }
