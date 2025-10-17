@@ -139,13 +139,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         super.attachBaseContext(base)
     }
 
-    protected fun setLoyaltyCardStore(store: String) {
+    private fun setLoyaltyCardStore(store: String) {
         viewModel.loyaltyCard.setStore(store)
 
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardNote(note: String) {
+    private fun setLoyaltyCardNote(note: String) {
         viewModel.loyaltyCard.setNote(note)
         viewModel.hasChanged = true
     }
@@ -160,35 +160,35 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardBalance(balance: BigDecimal) {
+    private fun setLoyaltyCardBalance(balance: BigDecimal) {
         viewModel.loyaltyCard.setBalance(balance)
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardBalanceType(balanceType: Currency?) {
+    private fun setLoyaltyCardBalanceType(balanceType: Currency?) {
         viewModel.loyaltyCard.setBalanceType(balanceType)
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardCardId(cardId: String) {
+    private fun setLoyaltyCardCardId(cardId: String) {
         viewModel.loyaltyCard.setCardId(cardId)
         generateBarcode()
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardBarcodeId(barcodeId: String?) {
+    private fun setLoyaltyCardBarcodeId(barcodeId: String?) {
         viewModel.loyaltyCard.setBarcodeId(barcodeId)
         generateBarcode()
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardBarcodeType(barcodeType: CatimaBarcode?) {
+    private fun setLoyaltyCardBarcodeType(barcodeType: CatimaBarcode?) {
         viewModel.loyaltyCard.setBarcodeType(barcodeType)
         generateBarcode()
         viewModel.hasChanged = true
     }
 
-    protected fun setLoyaltyCardHeaderColor(headerColor: Int?) {
+    private fun setLoyaltyCardHeaderColor(headerColor: Int?) {
         viewModel.loyaltyCard.setHeaderColor(headerColor)
         viewModel.hasChanged = true
     }
@@ -923,7 +923,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    protected fun setThumbnailImage(bitmap: Bitmap?) {
+    private fun setThumbnailImage(bitmap: Bitmap?) {
         setCardImage(ImageLocationType.icon, binding.thumbnail, bitmap, false)
 
         if (bitmap != null) {
@@ -987,7 +987,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    protected fun addDateFieldTextChangedListener(
+    private fun addDateFieldTextChangedListener(
         dateField: AutoCompleteTextView,
         @StringRes defaultOptionStringId: Int,
         @StringRes chooseDateOptionStringId: Int,
