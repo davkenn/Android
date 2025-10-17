@@ -85,11 +85,17 @@ import androidx.core.net.toUri
 import androidx.core.os.registerForAllProfilingResults
 import androidx.core.view.size
 import androidx.core.view.isEmpty
+import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback,
     ColorPickerDialogListener {
-    lateinit var viewModel: LoyaltyCardEditActivityViewModel
+
+     public val viewModel: LoyaltyCardEditActivityViewModel by lazy {
+        ViewModelProvider(this, LoyaltyCardEditViewModelFactory(application))
+            .get(LoyaltyCardEditActivityViewModel::class.java)
+    }
+
     private lateinit var binding: LoyaltyCardEditActivityBinding
 
     private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
@@ -249,7 +255,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this)[LoyaltyCardEditActivityViewModel::class.java]
+
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
         
