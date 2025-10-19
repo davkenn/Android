@@ -56,6 +56,10 @@ class LoyaltyCardEditActivityViewModel(
     private val _cardState = MutableStateFlow<CardLoadState>(CardLoadState.Loading)
     val cardState = _cardState.asStateFlow()
 
+    // UI error states
+    private val _storeNameError = MutableStateFlow<String?>(null)
+    val storeNameError = _storeNameError.asStateFlow()
+
     var tempStoredOldBarcodeValue: String? = null
 
     var initDone = false
@@ -157,6 +161,28 @@ class LoyaltyCardEditActivityViewModel(
                     )
                 }
             )
+        }
+    }
+
+    /**
+     * Called when the store name is changed by the user.
+     * Validates the input and updates both the card state and error state.
+     */
+    fun onStoreNameChanged(newName: String) {
+        val trimmedName = newName.trim()
+
+        // Update the loyalty card's store name
+        val currentState = _cardState.value
+        if (currentState is CardLoadState.Success) {
+            currentState.loyaltyCard.store = trimmedName
+            hasChanged = true
+        }
+
+        // Update validation error state
+        _storeNameError.value = if (trimmedName.isEmpty()) {
+            application.getString(protect.card_locker.R.string.field_must_not_be_empty)
+        } else {
+            null
         }
     }
 

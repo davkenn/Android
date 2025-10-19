@@ -311,17 +311,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         currencySymbols = availableCurrencies.associate { it.currencyCode to it.symbol }
 
 
+        // Store name listener - simple lambda calling ViewModel
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val storeName = s.toString().trim()
-                setLoyaltyCardStore(storeName)
-                generateIcon(storeName)
-
-                if (storeName.isEmpty()) {
-                    binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
-                } else {
-                    binding.storeNameEdit.error = null
-                }
+                viewModel.onStoreNameChanged(s.toString())
+                // UI-specific logic stays in Activity
+                generateIcon(s.toString().trim())
             }
         })
 
@@ -764,6 +759,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         viewModel.onSaveComplete() // Reset the state
                     }
                 }
+            }
+        }
+
+        // Observe store name validation errors
+        lifecycleScope.launch {
+            viewModel.storeNameError.collectLatest { error ->
+                binding.storeNameEdit.error = error
             }
         }
     }

@@ -129,4 +129,45 @@ class LoyaltyCardEditActivityViewModelTest {
         viewModel.cancelBarcodeGeneration()
         assertTrue(true)
     }
+
+    @Test
+    fun testStoreNameValidation_emptyName() = runTest {
+        // Load a card first so we have CardLoadState.Success
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        // Change store name to empty string
+        viewModel.onStoreNameChanged("")
+
+        // Should set error
+        assertNotNull(viewModel.storeNameError.value)
+        assertTrue(viewModel.storeNameError.value!!.contains("must not be empty"))
+    }
+
+    @Test
+    fun testStoreNameValidation_validName() = runTest {
+        // Load a card first
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        // Change store name to valid string
+        viewModel.onStoreNameChanged("Target")
+
+        // Should clear error
+        assertEquals(null, viewModel.storeNameError.value)
+    }
+
+    @Test
+    fun testStoreNameUpdatesCard() = runTest {
+        // Load a card first
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        // Change store name
+        viewModel.onStoreNameChanged("Costco")
+
+        // Should update the loyalty card
+        assertEquals("Costco", viewModel.loyaltyCard.store)
+        assertEquals(true, viewModel.hasChanged)
+    }
 }
