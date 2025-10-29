@@ -82,7 +82,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Callable
 import androidx.core.net.toUri
-import androidx.core.os.registerForAllProfilingResults
 import androidx.core.view.size
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
@@ -96,7 +95,7 @@ import java.io.File
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback,
     ColorPickerDialogListener {
 
-     public val viewModel: LoyaltyCardEditActivityViewModel by lazy {
+    val viewModel: LoyaltyCardEditActivityViewModel by lazy {
         ViewModelProvider(this, LoyaltyCardEditViewModelFactory(application))
             .get(LoyaltyCardEditActivityViewModel::class.java)
     }
@@ -242,11 +241,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         )
     }
 
-    public override fun onSaveInstanceState(savedInstanceState: Bundle) {
-        super.onSaveInstanceState(savedInstanceState)
-    }
-
-    public override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         viewModel.onRestoring = true
         super.onRestoreInstanceState(savedInstanceState)
     }

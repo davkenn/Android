@@ -6,11 +6,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -172,12 +168,10 @@ class LoyaltyCardEditActivityViewModel(
         val currentState = _cardState.value
         if (currentState is CardLoadState.Success) {
             val card = currentState.loyaltyCard
+            card.cardId = newCardId
 
             if (card.barcodeId == null || card.barcodeId == card.cardId) {
-                card.cardId = newCardId
                 card.barcodeId = newCardId
-            } else {
-                card.cardId = newCardId
             }
             hasChanged = true
         }
