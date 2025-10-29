@@ -186,44 +186,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.hasChanged = true
     }
 
-    private data class IntentData(
-        val cardId: Int,
-        val importUri: Uri?,
-        val isDuplicate: Boolean,
-        val addGroup: String?,
-        val openSetIconMenu: Boolean,
-        val bundleOverrides: Bundle?
-    )
-
-    private fun parseIntentData(intent: Intent): IntentData {
-        val b = intent.extras
-
-        val cardId = b?.getInt(BUNDLE_ID) ?: 0
-        val importUri = intent.data
-        val isUpdate = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
-        val isDuplicate = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
-        val addGroup = b?.getString(BUNDLE_ADDGROUP)
-        val openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
-
-        viewModel.loyaltyCardId = cardId
-        viewModel.updateLoyaltyCard = isUpdate
-        viewModel.duplicateFromLoyaltyCardId = isDuplicate
-        viewModel.importLoyaltyCardUri = importUri
-        viewModel.addGroup = addGroup
-        viewModel.openSetIconMenu = openSetIconMenu
-
-        Log.d(TAG, "Edit activity: id=$cardId, isUpdate=$isUpdate, isDuplicate=$isDuplicate")
-
-        return IntentData(
-            cardId = cardId,
-            importUri = importUri,
-            isDuplicate = isDuplicate,
-            addGroup = addGroup,
-            openSetIconMenu = openSetIconMenu,
-            bundleOverrides = b
-        )
-    }
-
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         viewModel.onRestoring = true
         super.onRestoreInstanceState(savedInstanceState)
@@ -262,14 +224,22 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         mDatabase = DBHelper(this).writableDatabase
 
         if (!viewModel.initialized) {
-            val intentData = parseIntentData(intent)
+            val b = intent.extras
+            val cardId = b?.getInt(BUNDLE_ID) ?: 0
+            val importUri = intent.data
+            val isUpdate = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
+            val isDuplicate = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
 
-            viewModel.loadCard(
-                cardId = intentData.cardId,
-                importUri = intentData.importUri,
-                isDuplicate = intentData.isDuplicate
-            )
+            viewModel.loyaltyCardId = cardId
+            viewModel.updateLoyaltyCard = isUpdate
+            viewModel.duplicateFromLoyaltyCardId = isDuplicate
+            viewModel.importLoyaltyCardUri = importUri
+            viewModel.addGroup = b?.getString(BUNDLE_ADDGROUP)
+            viewModel.openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
 
+            Log.d(TAG, "Edit activity: id=$cardId, isUpdate=$isUpdate, isDuplicate=$isDuplicate")
+
+            viewModel.loadCard(cardId, importUri, isDuplicate)
             viewModel.initialized = true
         }
 
