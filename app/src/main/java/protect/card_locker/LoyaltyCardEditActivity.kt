@@ -149,43 +149,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         super.attachBaseContext(base)
     }
 
-    fun setLoyaltyCardValidFrom(validFrom: Date?) {
-        viewModel.loyaltyCard.setValidFrom(validFrom)
-        viewModel.hasChanged = true
-    }
-
-    fun setLoyaltyCardExpiry(expiry: Date?) {
-        viewModel.loyaltyCard.setExpiry(expiry)
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardBalance(balance: BigDecimal) {
-        viewModel.loyaltyCard.setBalance(balance)
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardBalanceType(balanceType: Currency?) {
-        viewModel.loyaltyCard.setBalanceType(balanceType)
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardBarcodeId(barcodeId: String?) {
-        viewModel.loyaltyCard.setBarcodeId(barcodeId)
-        generateBarcode()
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardBarcodeType(barcodeType: CatimaBarcode?) {
-        viewModel.loyaltyCard.setBarcodeType(barcodeType)
-        generateBarcode()
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardHeaderColor(headerColor: Int?) {
-        viewModel.loyaltyCard.setHeaderColor(headerColor)
-        viewModel.hasChanged = true
-    }
-
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         viewModel.onRestoring = true
         super.onRestoreInstanceState(savedInstanceState)
@@ -279,7 +242,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         balanceField.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
             if (!hasFocus && !viewModel.onResuming && !viewModel.onRestoring) {
                 if (balanceField.text.toString().isEmpty()) {
-                    setLoyaltyCardBalance(BigDecimal.valueOf(0))
+                    viewModel.setBalance(BigDecimal.valueOf(0))
                 }
 
                 balanceField.setText(
@@ -297,7 +260,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 try {
                     val balance =
                         Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
-                    setLoyaltyCardBalance(balance)
+                    viewModel.setBalance(balance)
                     balanceField.error = null
                     validBalance = true
                 } catch (e: ParseException) {
@@ -317,7 +280,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     currencies.get(s.toString())
                 }
 
-                setLoyaltyCardBalanceType(currency)
+                viewModel.setBalanceType(currency)
 
                 if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !viewModel.onRestoring) {
                     balanceField.setText(
@@ -385,7 +348,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     // request to update it to match the card id (if changed)
                     viewModel.tempStoredOldBarcodeValue = null
 
-                    setLoyaltyCardBarcodeId(null)
+                    viewModel.setBarcodeId(null)
+                    generateBarcode()
                 } else if (s.toString() == getString(R.string.setBarcodeId)) {
                     if (lastValue.toString() != getString(R.string.setBarcodeId)) {
                         barcodeIdField.setText(lastValue)
@@ -431,7 +395,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
                     input.requestFocus()
                 } else {
-                    setLoyaltyCardBarcodeId(s.toString())
+                    viewModel.setBarcodeId(s.toString())
+                    generateBarcode()
                 }
             }
 
@@ -446,12 +411,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (s.isNotEmpty()) {
                     if (s.toString() == getString(R.string.noBarcode)) {
-                        setLoyaltyCardBarcodeType(null)
+                        viewModel.setBarcodeType(null)
+                        generateBarcode()
                     } else {
                         try {
                             val barcodeFormat = CatimaBarcode.fromPrettyName(s.toString())
 
-                            setLoyaltyCardBarcodeType(barcodeFormat)
+                            viewModel.setBarcodeType(barcodeFormat)
+                            generateBarcode()
 
                             if (!barcodeFormat.isSupported) {
                                 Toast.makeText(
@@ -807,7 +774,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // which can cause issues when switching locale because it parses the balance and e.g. the decimal separator may have changed.
         formatBalanceCurrencyField(data.loyaltyCard.balanceType)
         val balance = data.loyaltyCard.balance ?: BigDecimal("0")
-        setLoyaltyCardBalance(balance)
+        viewModel.setBalance(balance)
         balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
                 data.loyaltyCard.balance,
@@ -860,7 +827,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             val color = if (data.loyaltyCard.store.isEmpty())
                 Utils.getRandomHeaderColor(this)
             else Utils.getHeaderColor(this, data.loyaltyCard)
-            setLoyaltyCardHeaderColor(color)
+            viewModel.setHeaderColor(color)
         }
 
         setThumbnailImage(data.loyaltyCard.getImageThumbnail(this))
@@ -937,7 +904,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 Utils.getHeaderColor(this, viewModel.loyaltyCard)
             )
 
-            setLoyaltyCardHeaderColor(headerColor)
+            viewModel.setHeaderColor(headerColor)
 
             binding.thumbnail.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
 
@@ -1008,8 +975,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 if (s.toString() == getString(defaultOptionStringId)) {
                     dateField.tag = null
                     when (loyaltyCardField) {
-                        LoyaltyCardField.validFrom -> setLoyaltyCardValidFrom(null)
-                        LoyaltyCardField.expiry -> setLoyaltyCardExpiry(null)
+                        LoyaltyCardField.validFrom -> viewModel.setValidFrom(null)
+                        LoyaltyCardField.expiry -> viewModel.setExpiry(null)
                         else -> throw AssertionError("Unexpected field: $loyaltyCardField")
                     }
                 } else if (s.toString() == getString(chooseDateOptionStringId)) {
@@ -1319,7 +1286,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     // We don't need to set or check the dialogId since it's only used for that single dialog
     override fun onColorSelected(dialogId: Int, color: Int) {
         // Save new colour
-        setLoyaltyCardHeaderColor(color)
+        viewModel.setHeaderColor(color)
         // Unset image if set
         setThumbnailImage(null)
     }
@@ -1407,7 +1374,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         validFromField,
                         newDate
                     )
-                    setLoyaltyCardValidFrom(newDate)
+                    viewModel.setValidFrom(newDate)
                 }
 
                 LoyaltyCardField.expiry -> {
@@ -1416,7 +1383,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         expiryField,
                         newDate
                     )
-                    setLoyaltyCardExpiry(newDate)
+                    viewModel.setExpiry(newDate)
                 }
 
                 else -> throw AssertionError("Unexpected field: $tempLoyaltyCardField")

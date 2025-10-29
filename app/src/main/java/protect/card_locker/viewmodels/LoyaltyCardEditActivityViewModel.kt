@@ -12,11 +12,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeImageWriterTask
 import protect.card_locker.CardRepository
+import protect.card_locker.CatimaBarcode
 import protect.card_locker.Group
 import protect.card_locker.LoyaltyCard
 import protect.card_locker.LoyaltyCardField
 import protect.card_locker.async.TaskHandler
 import protect.card_locker.async.runSuspending
+import java.math.BigDecimal
+import java.util.Currency
+import java.util.Date
 
 
 sealed interface SaveState {
@@ -183,6 +187,41 @@ class LoyaltyCardEditActivityViewModel(
             currentState.loyaltyCard.barcodeId = newBarcodeId.ifEmpty { null }
             hasChanged = true
         }
+    }
+
+    fun setValidFrom(validFrom: Date?) {
+        loyaltyCard.setValidFrom(validFrom)
+        hasChanged = true
+    }
+
+    fun setExpiry(expiry: Date?) {
+        loyaltyCard.setExpiry(expiry)
+        hasChanged = true
+    }
+
+    fun setBalance(balance: BigDecimal) {
+        loyaltyCard.setBalance(balance)
+        hasChanged = true
+    }
+
+    fun setBalanceType(balanceType: Currency?) {
+        loyaltyCard.setBalanceType(balanceType)
+        hasChanged = true
+    }
+
+    fun setBarcodeId(barcodeId: String?) {
+        loyaltyCard.setBarcodeId(barcodeId)
+        hasChanged = true
+    }
+
+    fun setBarcodeType(barcodeType: CatimaBarcode?) {
+        loyaltyCard.setBarcodeType(barcodeType)
+        hasChanged = true
+    }
+
+    fun setHeaderColor(headerColor: Int?) {
+        loyaltyCard.setHeaderColor(headerColor)
+        hasChanged = true
     }
 
     fun saveCard(selectedGroups: List<Group>) {
