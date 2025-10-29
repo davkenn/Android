@@ -149,17 +149,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         super.attachBaseContext(base)
     }
 
-    private fun setLoyaltyCardStore(store: String) {
-        viewModel.loyaltyCard.setStore(store)
-
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardNote(note: String) {
-        viewModel.loyaltyCard.setNote(note)
-        viewModel.hasChanged = true
-    }
-
     fun setLoyaltyCardValidFrom(validFrom: Date?) {
         viewModel.loyaltyCard.setValidFrom(validFrom)
         viewModel.hasChanged = true
@@ -177,12 +166,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun setLoyaltyCardBalanceType(balanceType: Currency?) {
         viewModel.loyaltyCard.setBalanceType(balanceType)
-        viewModel.hasChanged = true
-    }
-
-    private fun setLoyaltyCardCardId(cardId: String) {
-        viewModel.loyaltyCard.setCardId(cardId)
-        generateBarcode()
         viewModel.hasChanged = true
     }
 
