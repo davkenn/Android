@@ -56,7 +56,6 @@ class LoyaltyCardEditActivityViewModel(
     private val _cardState = MutableStateFlow<CardLoadState>(CardLoadState.Loading)
     val cardState = _cardState.asStateFlow()
 
-    // UI error states
     private val _storeNameError = MutableStateFlow<String?>(null)
     val storeNameError = _storeNameError.asStateFlow()
 
@@ -103,44 +102,26 @@ class LoyaltyCardEditActivityViewModel(
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
     var tempLoyaltyCardField: LoyaltyCardField? = null
 
-    /**
-     * Single source of truth: access the current loyalty card from cardState.
-     * Returns the loaded card or a new card if not yet loaded.
-     */
     var loyaltyCard: LoyaltyCard
         get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCard ?: LoyaltyCard()
         set(value) {
-            // When setting the card, we need to update the state
             val currentState = _cardState.value
             if (currentState is CardLoadState.Success) {
                 _cardState.value = currentState.copy(loyaltyCard = value)
             }
         }
 
-    /**
-     * Access all groups from the current cardState.
-     */
     val allGroups: List<Group>
         get() = (_cardState.value as? CardLoadState.Success)?.allGroups ?: emptyList()
 
-    /**
-     * Access loyalty card groups from the current cardState.
-     */
     val loyaltyCardGroups: List<Group>
         get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCardGroups ?: emptyList()
 
-    /**
-     * Loads card data from the repository and updates the cardState flow.
-     * @param cardId The ID of the card to load (0 for new card)
-     * @param importUri Optional URI to import card from
-     * @param isDuplicate If true, loads card but clears ID for duplication
-     */
     fun loadCard(
         cardId: Int = 0,
         importUri: Uri? = null,
         isDuplicate: Boolean = false
     ) {
-        // Set loading state
         _cardState.value = CardLoadState.Loading
 
         viewModelScope.launch {
@@ -148,7 +129,6 @@ class LoyaltyCardEditActivityViewModel(
 
             _cardState.value = result.fold(
                 onSuccess = { data ->
-                    // Single source of truth: store everything in cardState
                     CardLoadState.Success(
                         loyaltyCard = data.loyaltyCard,
                         allGroups = data.allGroups,
@@ -164,21 +144,15 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    /**
-     * Called when the store name is changed by the user.
-     * Validates the input and updates both the card state and error state.
-     */
     fun onStoreNameChanged(newName: String) {
         val trimmedName = newName.trim()
 
-        // Update the loyalty card's store name
         val currentState = _cardState.value
         if (currentState is CardLoadState.Success) {
             currentState.loyaltyCard.store = trimmedName
             hasChanged = true
         }
 
-        // Update validation error state
         _storeNameError.value = if (trimmedName.isEmpty()) {
             application.getString(protect.card_locker.R.string.field_must_not_be_empty)
         } else {
@@ -186,8 +160,39 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
+    fun onNoteChanged(newNote: String) {
+        val currentState = _cardState.value
+        if (currentState is CardLoadState.Success) {
+            currentState.loyaltyCard.note = newNote
+            hasChanged = true
+        }
+    }
+
+    fun onCardIdChanged(newCardId: String) {
+        val currentState = _cardState.value
+        if (currentState is CardLoadState.Success) {
+            val card = currentState.loyaltyCard
+
+            if (card.barcodeId == null || card.barcodeId == card.cardId) {
+                card.cardId = newCardId
+                card.barcodeId = newCardId
+            } else {
+                card.cardId = newCardId
+            }
+            hasChanged = true
+        }
+    }
+
+    fun onBarcodeIdChanged(newBarcodeId: String) {
+        val currentState = _cardState.value
+        if (currentState is CardLoadState.Success) {
+            currentState.loyaltyCard.barcodeId = newBarcodeId.ifEmpty { null }
+            hasChanged = true
+        }
+    }
+
     fun saveCard(selectedGroups: List<Group>) {
-        if (_saveState.value is SaveState.Saving) return // Debounce if already saving
+        if (_saveState.value is SaveState.Saving) return
 
         _saveState.value = SaveState.Saving
 
@@ -203,10 +208,7 @@ class LoyaltyCardEditActivityViewModel(
             )
         }
     }
-    /**
-     * Resets the save state to Idle. Should be called by the UI after handling
-     * a Success or Error state.
-     */
+
     fun onSaveComplete() {
         _saveState.value = SaveState.Idle
     }

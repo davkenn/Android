@@ -204,9 +204,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         viewModel.hasChanged = true
     }
 
-    /**
-     * Data class to hold parsed Intent data
-     */
     private data class IntentData(
         val cardId: Int,
         val importUri: Uri?,
@@ -216,10 +213,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val bundleOverrides: Bundle?
     )
 
-    /**
-     * Parses the Intent and extracts all necessary data for loading the card.
-     * This keeps Intent parsing in the Activity where it belongs.
-     */
     private fun parseIntentData(intent: Intent): IntentData {
         val b = intent.extras
 
@@ -230,7 +223,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val addGroup = b?.getString(BUNDLE_ADDGROUP)
         val openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
 
-        // Store flags in ViewModel for later use
         viewModel.loyaltyCardId = cardId
         viewModel.updateLoyaltyCard = isUpdate
         viewModel.duplicateFromLoyaltyCardId = isDuplicate
@@ -264,8 +256,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
-        
-        // Clean up any leftover temporary files from previous sessions
+
         cleanUpTempImages()
         groupChips = binding.groupChips
         validFromField = binding.validFromField
@@ -292,11 +283,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         mDatabase = DBHelper(this).writableDatabase
 
-        // Parse Intent and load card data via ViewModel
         if (!viewModel.initialized) {
             val intentData = parseIntentData(intent)
 
-            // Trigger card loading in ViewModel
             viewModel.loadCard(
                 cardId = intentData.cardId,
                 importUri = intentData.importUri,
@@ -310,19 +299,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         currencies = availableCurrencies.associateBy { it.symbol }
         currencySymbols = availableCurrencies.associate { it.currencyCode to it.symbol }
 
-
-        // Store name listener - simple lambda calling ViewModel
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 viewModel.onStoreNameChanged(s.toString())
-                // UI-specific logic stays in Activity
                 generateIcon(s.toString().trim())
             }
         })
 
         binding.noteEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                setLoyaltyCardNote(s.toString())
+                viewModel.onNoteChanged(s.toString())
             }
         })
 
@@ -423,11 +409,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 if (viewModel.initDone && !viewModel.onResuming) {
                     if (viewModel.tempStoredOldBarcodeValue == null) {
-                        // We changed the card ID, save the current barcode ID in a temp
-                        // variable and make sure to ask the user later if they also want to
-                        // update the barcode ID
                         if (viewModel.loyaltyCard.barcodeId != null) {
-                            // If it is not set to "same as Card ID", save as tempStoredOldBarcodeValue
                             viewModel.tempStoredOldBarcodeValue = barcodeIdField.text.toString()
                         }
                     }
@@ -435,13 +417,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                setLoyaltyCardCardId(s.toString())
-
-                if (s.isEmpty()) {
-                    cardIdFieldView.error = getString(R.string.field_must_not_be_empty)
-                } else {
-                    cardIdFieldView.error = null
-                }
+                viewModel.onCardIdChanged(s.toString())
+                cardIdFieldView.error = if (s.isEmpty()) {
+                    getString(R.string.field_must_not_be_empty)
+                } else null
             }
         })
 
@@ -663,7 +642,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     Log.d("cropper", "requestedImageType: ${viewModel.requestedImageType}")
                     viewModel.hasChanged = true
 
-                    // Clean up temporary files after successful image processing
                     cleanUpTempImages()
                 } else {
                     Toast.makeText(
@@ -688,7 +666,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 askBeforeQuitIfChanged()
             }
         })
-        // Observe card loading state
+
         lifecycleScope.launch {
             viewModel.cardState.collectLatest { state ->
                 when (state) {
@@ -698,7 +676,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                     is CardLoadState.Success -> {
                         Log.d(TAG, "Card data loaded successfully")
-                        // Bind the loaded data to the UI immediately
                         bindCardToUi(state)
                     }
 
@@ -715,20 +692,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        // Observe save state
         lifecycleScope.launch {
             viewModel.saveState.collectLatest { state ->
-                // This 'when' block will execute every time the saveState changes
                 when (state) {
                     is SaveState.Idle -> {
-                        // The initial state, or after an operation is complete.
-                        // Make sure the save button is enabled.
                         binding.fabSave.isEnabled = true
                     }
 
                     is SaveState.Saving -> {
-                        // The save operation has started.
-                        // Disable the save button to prevent multiple clicks and show a message.
                         binding.fabSave.isEnabled = false
                         Toast.makeText(
                             this@LoyaltyCardEditActivity,
@@ -738,31 +709,28 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
 
                     is SaveState.Success -> {
-                        // The save was successful! Show a confirmation and finish the activity.
                         Toast.makeText(
                             this@LoyaltyCardEditActivity,
                             "Card saved successfully!",
                             Toast.LENGTH_SHORT
                         ).show()
-                        viewModel.onSaveComplete() // Reset the state in the ViewModel
-                        finish() // This is the navigation part you were asking about
+                        viewModel.onSaveComplete()
+                        finish()
                     }
 
                     is SaveState.Error -> {
-                        // An error occurred. Show the error message.
                         Toast.makeText(
                             this@LoyaltyCardEditActivity,
                             "Error: ${state.message}",
                             Toast.LENGTH_LONG
                         ).show()
                         binding.fabSave.isEnabled = true
-                        viewModel.onSaveComplete() // Reset the state
+                        viewModel.onSaveComplete()
                     }
                 }
             }
         }
 
-        // Observe store name validation errors
         lifecycleScope.launch {
             viewModel.storeNameError.collectLatest { error ->
                 binding.storeNameEdit.error = error
@@ -870,16 +838,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun requestedIcon(): Boolean = getCurrentImageOperation() == ImageOperation.ICON
 
-    /**
-     * Binds loaded card data to the UI.
-     * This should be called when card data is successfully loaded.
-     */
     private fun bindCardToUi(data: CardLoadState.Success) {
         viewModel.onResuming = true
 
         val hadChanges = viewModel.hasChanged
 
-        // Bind basic card fields
         binding.storeNameEdit.setText(data.loyaltyCard.store)
         binding.noteEdit.setText(data.loyaltyCard.note)
         formatDateField(this, validFromField, data.loyaltyCard.validFrom)
@@ -906,7 +869,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         validBalance = true
         Log.d(TAG, "Setting balance to $balance")
 
-        // Bind group chips
         if (groupChips.isEmpty()) {
             val existingGroups = data.allGroups
             val loyaltyCardGroups = data.loyaltyCardGroups
@@ -945,7 +907,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        // Set header color if not already set
         if (data.loyaltyCard.headerColor == null) {
             // If name is set, pick colour relevant for name. Otherwise pick randomly
             val color = if (data.loyaltyCard.store.isEmpty())
@@ -954,7 +915,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             setLoyaltyCardHeaderColor(color)
         }
 
-        // Bind images
         setThumbnailImage(data.loyaltyCard.getImageThumbnail(this))
         setCardImage(
             ImageLocationType.front,
@@ -969,7 +929,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             true
         )
 
-        // Initialization has finished
         if (!viewModel.initDone) {
             viewModel.initDone = true
             viewModel.hasChanged = hadChanges
@@ -1533,11 +1492,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun doSave() {
         if (isFinishing || viewModel.saveState.value is SaveState.Saving) {
-            // Don't do anything if the activity is closing or a save is already in progress.
             return
         }
 
-        // This part stays in the Activity because it's UI validation.
         var hasError = false
         if (binding.storeNameEdit.text.toString().trim().isEmpty()) {
             binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
@@ -1567,7 +1524,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (hasError) {
             return
         }
-        // All validation passed. Get the selected groups and tell the ViewModel to save.
+
         val selectedGroups = mutableListOf<Group>()
         for (chipId in binding.groupChips.checkedChipIds) {
             val chip = binding.groupChips.findViewById<Chip>(chipId)
