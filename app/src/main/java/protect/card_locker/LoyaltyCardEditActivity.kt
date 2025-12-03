@@ -1,6 +1,10 @@
 package protect.card_locker
 
 import protect.card_locker.R
+import android.R as AndroidR
+import androidx.appcompat.R as AppCompatR
+import com.google.android.material.R as MaterialR
+import com.yalantis.ucrop.R as UCropR
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -140,7 +144,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var mSystemLocale: Locale
 
     private fun <T> createDropdownAdapter(items: List<T>): ArrayAdapter<T> =
-        ArrayAdapter(this, android.R.layout.select_dialog_item, items)
+        ArrayAdapter(this, AndroidR.layout.select_dialog_item, items)
 
     override fun attachBaseContext(base: Context?) {
         // store system locale
@@ -694,7 +698,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             selectedByDefault,
             AspectRatio(null, 1f, 1f),
             AspectRatio(
-                getResources().getString(com.yalantis.ucrop.R.string.ucrop_label_original)
+                getResources().getString(UCropR.string.ucrop_label_original)
                     .uppercase(
                         Locale.getDefault()
                     ), sourceWidth, sourceHeight
@@ -706,31 +710,18 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         )
 
         // Fix theming
-        val colorPrimary = MaterialColors.getColor(
+        fun getThemeColor(attr: Int, defaultRes: Int) = MaterialColors.getColor(
             this,
-            androidx.appcompat.R.attr.colorPrimary,
-            ContextCompat.getColor(this, R.color.md_theme_light_primary)
+            attr,
+            ContextCompat.getColor(this, defaultRes)
         )
-        val colorOnPrimary = MaterialColors.getColor(
-            this,
-            com.google.android.material.R.attr.colorOnPrimary,
-            ContextCompat.getColor(this, R.color.md_theme_light_onPrimary)
-        )
-        val colorSurface = MaterialColors.getColor(
-            this,
-            com.google.android.material.R.attr.colorSurface,
-            ContextCompat.getColor(this, R.color.md_theme_light_surface)
-        )
-        val colorOnSurface = MaterialColors.getColor(
-            this,
-            com.google.android.material.R.attr.colorOnSurface,
-            ContextCompat.getColor(this, R.color.md_theme_light_onSurface)
-        )
-        val colorBackground = MaterialColors.getColor(
-            this,
-            android.R.attr.colorBackground,
-            ContextCompat.getColor(this, R.color.md_theme_light_onSurface)
-        )
+
+        val colorPrimary = getThemeColor(AppCompatR.attr.colorPrimary, R.color.md_theme_light_primary)
+        val colorOnPrimary = getThemeColor(MaterialR.attr.colorOnPrimary, R.color.md_theme_light_onPrimary)
+        val colorSurface = getThemeColor(MaterialR.attr.colorSurface, R.color.md_theme_light_surface)
+        val colorOnSurface = getThemeColor(MaterialR.attr.colorOnSurface, R.color.md_theme_light_onSurface)
+        val colorBackground = getThemeColor(AndroidR.attr.colorBackground, R.color.md_theme_light_onSurface)
+
         mCropperOptions.setToolbarColor(colorSurface)
         mCropperOptions.setStatusBarColor(colorSurface)
         mCropperOptions.setToolbarWidgetColor(colorOnSurface)
@@ -1454,7 +1445,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) {
+        if (item.itemId == AndroidR.id.home) {
             askBeforeQuitIfChanged()
             return true
         }
