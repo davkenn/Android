@@ -916,15 +916,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     fun setCardImage(
-        imageLocationType: ImageLocationType?,
+        imageLocationType: ImageLocationType,
         imageView: ImageView,
         bitmap: Bitmap?,
         applyFallback: Boolean
     ) {
-        if (imageLocationType == null) {
-            throw IllegalArgumentException("Unknown image type")
-        }
-
         viewModel.setCardImage(imageLocationType, bitmap, null)
 
         bitmap?.let { imageView.setImageBitmap(it) } ?: run {
