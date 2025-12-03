@@ -22,6 +22,8 @@ import java.math.BigDecimal
 import java.util.Currency
 import java.util.Date
 
+import protect.card_locker.ImageLocationType
+import android.graphics.Bitmap
 
 sealed interface SaveState {
     object Idle : SaveState
@@ -222,6 +224,22 @@ class LoyaltyCardEditActivityViewModel(
     fun setHeaderColor(headerColor: Int?) {
         loyaltyCard.setHeaderColor(headerColor)
         hasChanged = true
+    }
+
+    fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
+        when (imageLocationType) {
+            ImageLocationType.icon -> loyaltyCard.setImageThumbnail(bitmap, path)
+            ImageLocationType.front -> loyaltyCard.setImageFront(bitmap, path)
+            ImageLocationType.back -> loyaltyCard.setImageBack(bitmap, path)
+        }
+    }
+
+    fun getImage(imageLocationType: ImageLocationType): Bitmap? {
+        return when (imageLocationType) {
+            ImageLocationType.icon -> loyaltyCard.getImageThumbnail(application)
+            ImageLocationType.front -> loyaltyCard.getImageFront(application)
+            ImageLocationType.back -> loyaltyCard.getImageBack(application)
+        }
     }
 
     fun saveCard(selectedGroups: List<Group>) {

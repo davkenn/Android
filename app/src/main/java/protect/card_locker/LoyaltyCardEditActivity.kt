@@ -818,17 +818,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.setHeaderColor(color)
         }
 
-        setThumbnailImage(data.loyaltyCard.getImageThumbnail(this))
+        setThumbnailImage(viewModel.getImage(ImageLocationType.icon))
         setCardImage(
             ImageLocationType.front,
             cardImageFront,
-            data.loyaltyCard.getImageFront(this),
+            viewModel.getImage(ImageLocationType.front),
             true
         )
         setCardImage(
             ImageLocationType.back,
             cardImageBack,
-            data.loyaltyCard.getImageBack(this),
+            viewModel.getImage(ImageLocationType.back),
             true
         )
 
@@ -921,23 +921,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         bitmap: Bitmap?,
         applyFallback: Boolean
     ) {
-        when (imageLocationType) {
-            ImageLocationType.icon -> {
-                viewModel.loyaltyCard.setImageThumbnail(bitmap, null)
-            }
-
-            ImageLocationType.front -> {
-                viewModel.loyaltyCard.setImageFront(bitmap, null)
-            }
-
-            ImageLocationType.back -> {
-                viewModel.loyaltyCard.setImageBack(bitmap, null)
-            }
-
-            else -> {
-                throw IllegalArgumentException("Unknown image type")
-            }
+        if (imageLocationType == null) {
+            throw IllegalArgumentException("Unknown image type")
         }
+
+        viewModel.setCardImage(imageLocationType, bitmap, null)
 
         bitmap?.let { imageView.setImageBitmap(it) } ?: run {
             if (applyFallback) {
@@ -1187,11 +1175,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 throw IllegalArgumentException("Invalid IMAGE ID ${v.id}", e)
             }
 
-            val currentImage = when (operation.locationType) {
-                ImageLocationType.front -> viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
-                ImageLocationType.back -> viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
-                ImageLocationType.icon -> viewModel.loyaltyCard.getImageThumbnail(this@LoyaltyCardEditActivity)
-            }
+            val currentImage = viewModel.getImage(operation.locationType)
 
             val targetView = when (operation) {
                 ImageOperation.FRONT -> cardImageFront
@@ -1235,7 +1219,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             if (operation == ImageOperation.ICON) {
-                val imageFront = viewModel.loyaltyCard.getImageFront(this@LoyaltyCardEditActivity)
+                val imageFront = viewModel.getImage(ImageLocationType.front)
                 if (imageFront != null) {
                     cardOptions[getString(R.string.useFrontImage)] = Callable {
                         setThumbnailImage(
@@ -1245,7 +1229,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                 }
 
-                val imageBack = viewModel.loyaltyCard.getImageBack(this@LoyaltyCardEditActivity)
+                val imageBack = viewModel.getImage(ImageLocationType.back)
                 if (imageBack != null) {
                     cardOptions[getString(R.string.useBackImage)] = Callable {
                         setThumbnailImage(
