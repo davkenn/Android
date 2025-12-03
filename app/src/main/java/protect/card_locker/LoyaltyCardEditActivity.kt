@@ -1147,59 +1147,53 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 ImageOperation.ICON -> binding.thumbnail
             }
 
-            val cardOptions = linkedMapOf<String, Callable<Void>>()
-            
+            val cardOptions = linkedMapOf<String, () -> Unit>()
+
             if (currentImage != null && operation != ImageOperation.ICON) {
-                cardOptions[getString(R.string.removeImage)] = Callable {
+                cardOptions[getString(R.string.removeImage)] = {
                     setCardImage(operation.locationType, targetView, null, true)
-                    null
                 }
             }
 
             if (operation == ImageOperation.ICON) {
-                cardOptions[getString(R.string.selectColor)] = Callable {
+                cardOptions[getString(R.string.selectColor)] = {
                     val dialogBuilder = ColorPickerDialog.newBuilder()
                     viewModel.loyaltyCard.headerColor?.let { dialogBuilder.setColor(it) }
                     val dialog = dialogBuilder.create()
                     dialog.show(supportFragmentManager, "color-picker-dialog")
-                    null
                 }
             }
 
-            cardOptions[getString(R.string.takePhoto)] = Callable {
+            cardOptions[getString(R.string.takePhoto)] = {
                 PermissionUtils.requestCameraPermission(
                     this@LoyaltyCardEditActivity,
                     operation.cameraPermissionCode
                 )
-                null
             }
 
-            cardOptions[getString(R.string.addFromImage)] = Callable {
+            cardOptions[getString(R.string.addFromImage)] = {
                 PermissionUtils.requestStorageReadPermission(
                     this@LoyaltyCardEditActivity,
                     operation.storagePermissionCode
                 )
-                null
             }
 
             if (operation == ImageOperation.ICON) {
                 val imageFront = viewModel.getImage(ImageLocationType.front)
                 if (imageFront != null) {
-                    cardOptions[getString(R.string.useFrontImage)] = Callable {
+                    cardOptions[getString(R.string.useFrontImage)] = {
                         setThumbnailImage(
                             Utils.resizeBitmap(imageFront, Utils.BITMAP_SIZE_SMALL.toDouble())
                         )
-                        null
                     }
                 }
 
                 val imageBack = viewModel.getImage(ImageLocationType.back)
                 if (imageBack != null) {
-                    cardOptions[getString(R.string.useBackImage)] = Callable {
+                    cardOptions[getString(R.string.useBackImage)] = {
                         setThumbnailImage(
                             Utils.resizeBitmap(imageBack, Utils.BITMAP_SIZE_SMALL.toDouble())
                         )
-                        null
                     }
                 }
             }
@@ -1208,7 +1202,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 .setTitle(getString(operation.titleResource))
                 .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { _, which ->
                     try {
-                        cardOptions.values.toList()[which].call()
+                        cardOptions.values.toList()[which]()
                     } catch (e: Exception) {
                         e.printStackTrace()
                         throw NoSuchElementException(e.message)
