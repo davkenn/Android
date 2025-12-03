@@ -124,7 +124,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var enterButton: Button
     private lateinit var toolbar: Toolbar
     private lateinit var mDatabase: SQLiteDatabase
-
     var confirmExitDialog: AlertDialog? = null
     var validBalance: Boolean = true
     lateinit var currencies: Map<String, Currency>
@@ -244,7 +243,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 if (balanceField.text.toString().isEmpty()) {
                     viewModel.setBalance(BigDecimal.valueOf(0))
                 }
-
                 balanceField.setText(
                     Utils.formatBalanceWithoutCurrencySymbol(
                         viewModel.loyaltyCard.balance,
@@ -277,7 +275,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val currency: Currency? = if (s.toString() == getString(R.string.points)) {
                     null
                 } else {
-                    currencies.get(s.toString())
+                    currencies[s.toString()]
                 }
 
                 viewModel.setBalanceType(currency)
@@ -459,7 +457,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         mPhotoTakerLauncher = registerForActivityResult(
             TakePicture()
-        ) { result: Boolean? ->
+        ) { result: Boolean ->
             if (result == true) {
                 startCropper("$cacheDir/$TEMP_CAMERA_IMAGE_NAME")
             }
@@ -744,7 +742,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             mCropperOptions.setActiveControlsWidgetColor(colorPrimary)
         }
     }
-
     private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
 
     private fun requestedFrontImage(): Boolean = getCurrentImageOperation() == ImageOperation.FRONT
@@ -1453,7 +1450,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.card_add_menu, menu)
-
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -1577,6 +1573,18 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         barcodeImageLayout.visibility = View.VISIBLE
 
+        fun createBarcodeWriter() = BarcodeImageWriterTask(
+            applicationContext,
+            barcodeImage,
+            cardIdString,
+            barcodeFormat,
+            null,
+            false,
+            this@LoyaltyCardEditActivity,
+            true,
+            false
+        )
+
         if (barcodeImage.height == 0) {
             Log.d(TAG, "ImageView size is not known known at start, waiting for load")
             // The size of the ImageView is not yet available as it has not
@@ -1585,37 +1593,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 object : OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
                         barcodeImage.viewTreeObserver.removeOnGlobalLayoutListener(this)
-
                         Log.d(TAG, "ImageView size now known")
-                        val barcodeWriter = BarcodeImageWriterTask(
-                            applicationContext,
-                            barcodeImage,
-                            cardIdString,
-                            barcodeFormat,
-                            null,
-                            false,
-                            this@LoyaltyCardEditActivity,
-                            true,
-                            false
-                        )
-
-                        viewModel.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
+                        viewModel.executeTask(TaskHandler.TYPE.BARCODE, createBarcodeWriter())
                     }
                 })
         } else {
             Log.d(TAG, "ImageView size known known, creating barcode")
-            val barcodeWriter = BarcodeImageWriterTask(
-                applicationContext,
-                barcodeImage,
-                cardIdString,
-                barcodeFormat,
-                null,
-                false,
-                this,
-                true,
-                false
-            )
-            viewModel.executeTask(TaskHandler.TYPE.BARCODE, barcodeWriter)
+            viewModel.executeTask(TaskHandler.TYPE.BARCODE, createBarcodeWriter())
         }
     }
 
