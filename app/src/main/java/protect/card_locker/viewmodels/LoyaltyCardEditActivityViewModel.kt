@@ -21,7 +21,6 @@ import protect.card_locker.async.runSuspending
 import java.math.BigDecimal
 import java.util.Currency
 import java.util.Date
-
 import protect.card_locker.ImageLocationType
 import android.graphics.Bitmap
 
