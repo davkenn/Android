@@ -131,11 +131,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     lateinit var currencies: Map<String, Currency>
     lateinit var currencySymbols: Map<String, String>
 
-    private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri?>
-    private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent?>
-    private lateinit var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent?>
+    private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri>
+    private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent>
 
-    private lateinit var mCropperLauncher: ActivityResultLauncher<Intent?>
+    private lateinit var mCropperLauncher: ActivityResultLauncher<Intent>
     private lateinit var mCropperOptions: UCrop.Options
 
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
@@ -209,8 +209,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.onStoreNameChanged(s.toString())
-                generateIcon(s.toString().trim())
+                val storeName = s.toString().trim()
+                viewModel.onStoreNameChanged(storeName)
+                generateIcon(storeName)
             }
         })
 
@@ -383,7 +384,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.isNotEmpty()) {
+                if (s.toString().isNotEmpty()) {
                     if (s.toString() == getString(R.string.noBarcode)) {
                         viewModel.setBarcodeType(null)
                         generateBarcode()
@@ -1145,7 +1146,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
                 .setTitle(getString(operation.titleResource))
-                .setItems(cardOptions.keys.toTypedArray<CharSequence?>()) { _, which ->
+                .setItems(cardOptions.keys.toTypedArray<CharSequence>()) { _, which ->
                     try {
                         cardOptions.values.toList()[which]()
                     } catch (e: Exception) {

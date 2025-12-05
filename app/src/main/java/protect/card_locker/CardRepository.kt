@@ -83,10 +83,8 @@ class CardRepository(context: Context) {
 
                     if (isDuplicate) {
                         card.id = 0
-                        card
-                    } else {
-                        card
                     }
+                    card
                 }
                 else -> {
                     LoyaltyCard()
