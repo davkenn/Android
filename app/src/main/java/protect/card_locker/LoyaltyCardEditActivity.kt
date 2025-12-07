@@ -107,10 +107,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private lateinit var binding: LoyaltyCardEditActivityBinding
-
-    private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
-    private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
-    private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
     private lateinit var groupChips: ChipGroup
     private lateinit var validFromField: AutoCompleteTextView
     private lateinit var expiryField: AutoCompleteTextView
@@ -1516,10 +1512,21 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     companion object {
         private const val TAG = "Catima"
+
+        // Temp file constants
+        private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
+        private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
+        private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
+
+        // Date picker keys
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
+
+        // Permission request codes
         private const val PERMISSION_REQUEST_CAMERA = 100
         private const val PERMISSION_REQUEST_STORAGE = 101
+
+        // Bundle keys
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
         const val BUNDLE_UPDATE: String = "update"
