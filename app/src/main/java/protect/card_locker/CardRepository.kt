@@ -1,6 +1,7 @@
 package protect.card_locker
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,17 +20,17 @@ data class LoadedCardData(
     val loyaltyCardGroups: List<Group>
 )
 
-class CardRepository(context: Context) {
-
-    private val mDatabase = DBHelper(context).writableDatabase
-    private val appContext = context.applicationContext
+class CardRepository(
+    private val database: SQLiteDatabase,
+    private val appContext: Context
+) {
 
     suspend fun saveCard(loyaltyCard: LoyaltyCard, selectedGroups: List<Group>): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val cardId: Int
             if (loyaltyCard.id > 0) {
                 DBHelper.updateLoyaltyCard(
-                    mDatabase, loyaltyCard.id, loyaltyCard.store, loyaltyCard.note,
+                    database, loyaltyCard.id, loyaltyCard.store, loyaltyCard.note,
                     loyaltyCard.validFrom, loyaltyCard.expiry, loyaltyCard.balance,
                     loyaltyCard.balanceType, loyaltyCard.cardId, loyaltyCard.barcodeId,
                     loyaltyCard.barcodeType, loyaltyCard.headerColor, loyaltyCard.starStatus,
@@ -39,7 +40,7 @@ class CardRepository(context: Context) {
                 cardId = loyaltyCard.id
             } else {
                 cardId = DBHelper.insertLoyaltyCard(
-                    mDatabase, loyaltyCard.store, loyaltyCard.note,
+                    database, loyaltyCard.store, loyaltyCard.note,
                     loyaltyCard.validFrom, loyaltyCard.expiry, loyaltyCard.balance,
                     loyaltyCard.balanceType, loyaltyCard.cardId, loyaltyCard.barcodeId,
                     loyaltyCard.barcodeType, loyaltyCard.headerColor, 0,
@@ -49,9 +50,9 @@ class CardRepository(context: Context) {
             }
 
             saveCardImages(loyaltyCard, cardId)
-            DBHelper.setLoyaltyCardGroups(mDatabase, cardId, selectedGroups)
+            DBHelper.setLoyaltyCardGroups(database, cardId, selectedGroups)
 
-            val savedCard = DBHelper.getLoyaltyCard(appContext, mDatabase, cardId)
+            val savedCard = DBHelper.getLoyaltyCard(appContext, database, cardId)
             if (savedCard != null) {
                 ShortcutHelper.updateShortcuts(appContext, savedCard)
             }
@@ -78,7 +79,7 @@ class CardRepository(context: Context) {
                     }
                 }
                 cardId > 0 -> {
-                    val card = DBHelper.getLoyaltyCard(appContext, mDatabase, cardId)
+                    val card = DBHelper.getLoyaltyCard(appContext, database, cardId)
                         ?: throw Exception("Card with ID $cardId not found in database")
 
                     if (isDuplicate) {
@@ -91,10 +92,10 @@ class CardRepository(context: Context) {
                 }
             }
 
-            val allGroups = DBHelper.getGroups(mDatabase)
+            val allGroups = DBHelper.getGroups(database)
 
             val loyaltyCardGroups = if (cardId > 0 && !isDuplicate) {
-                DBHelper.getLoyaltyCardGroups(mDatabase, cardId)
+                DBHelper.getLoyaltyCardGroups(database, cardId)
             } else {
                 emptyList()
             }

@@ -1,6 +1,7 @@
 package protect.card_locker.viewmodels
 
 import android.app.Application
+import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -45,8 +46,6 @@ class LoyaltyCardEditActivityViewModel(
     private val application: Application,
     private val cardRepository: CardRepository
 ) : ViewModel() {
-
-    constructor(application: Application) : this(application, CardRepository(application))
     private companion object {
         private const val TAG = "Catima"
     }
@@ -264,11 +263,17 @@ class LoyaltyCardEditActivityViewModel(
     }
 
 }
-class LoyaltyCardEditViewModelFactory(private val application: Application) : ViewModelProvider.AndroidViewModelFactory(application) {
+class LoyaltyCardEditViewModelFactory(
+    private val application: Application,
+    private val database: SQLiteDatabase
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LoyaltyCardEditActivityViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LoyaltyCardEditActivityViewModel(application,CardRepository(application)) as T
+            return LoyaltyCardEditActivityViewModel(
+                application,
+                CardRepository(database, application)
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

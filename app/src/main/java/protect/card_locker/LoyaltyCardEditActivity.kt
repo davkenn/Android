@@ -98,9 +98,11 @@ import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback, ColorPickerDialogListener {
 
+    private val mDatabase by lazy { DBHelper(this).writableDatabase }
+
     @get:JvmName("getViewModel")
     val viewModel: LoyaltyCardEditActivityViewModel by lazy {
-        ViewModelProvider(this, LoyaltyCardEditViewModelFactory(application))
+        ViewModelProvider(this, LoyaltyCardEditViewModelFactory(application, mDatabase))
             .get(LoyaltyCardEditActivityViewModel::class.java)
     }
 
@@ -130,14 +132,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     var validBalance: Boolean = true
     lateinit var currencies: Map<String, Currency>
     lateinit var currencySymbols: Map<String, String>
-
     private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri>
     private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent>
-
     private lateinit var mCropperLauncher: ActivityResultLauncher<Intent>
     private lateinit var mCropperOptions: UCrop.Options
-
     // store system locale for Build.VERSION.SDK_INT < Build.VERSION_CODES.N
     private lateinit var mSystemLocale: Locale
 
