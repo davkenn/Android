@@ -526,7 +526,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             return@registerForActivityResult
                         }
                     }
-                    Log.d("cropper", "requestedImageType: ${viewModel.requestedImageType}")
                     viewModel.hasChanged = true
 
                     cleanUpTempImages()
@@ -918,34 +917,19 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun performActionWithPermissionCheck(requestCode: Int, granted: Boolean): Int? {
         if (!granted) {
             return when (requestCode) {
-                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
-                PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
-                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> R.string.cameraPermissionRequired
-                PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
-                PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
-                PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> R.string.storageReadPermissionRequired
+                PERMISSION_REQUEST_CAMERA -> R.string.cameraPermissionRequired
+                PERMISSION_REQUEST_STORAGE -> R.string.storageReadPermissionRequired
                 else -> R.string.generic_error_please_retry
             }
         }
-//this try isnt functionally identical to the java
-        try {
-            when (requestCode) {
-                PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
-                PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
-                PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
-                    val operation = ImageOperation.fromCameraPermission(requestCode)
-                    takePhotoForCard(operation)
-                }
 
-                PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
-                PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
-                PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
-                    val operation = ImageOperation.fromStoragePermission(requestCode)
-                    selectImageFromGallery(operation)
-                }
-            }
-        } catch (e: IllegalArgumentException) {
+        if (viewModel.currentImageOperation == null) {
             return R.string.generic_error_please_retry
+        }
+
+        when (requestCode) {
+            PERMISSION_REQUEST_CAMERA -> takePhotoForCard()
+            PERMISSION_REQUEST_STORAGE -> selectImageFromGallery()
         }
         return null
     }
@@ -1015,15 +999,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         confirmExitDialog?.show()
     }
 
-
-    private fun takePhotoForCard(op: ImageOperation) {
+    private fun takePhotoForCard() {
         val photoURI = FileProvider.getUriForFile(
             this@LoyaltyCardEditActivity,
             BuildConfig.APPLICATION_ID,
             Utils.createTempFile(this, TEMP_CAMERA_IMAGE_NAME)
         )
-        viewModel.requestedImageType = op.cameraTypeConstant
-        viewModel.currentImageOperation = op
 
         try {
             mPhotoTakerLauncher.launch(photoURI)
@@ -1037,9 +1018,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun selectImageFromGallery(op: ImageOperation) {
-        viewModel.requestedImageType = op.fileTypeConstant
-        viewModel.currentImageOperation = op
+    private fun selectImageFromGallery() {
 
         val photoPickerIntent = Intent(Intent.ACTION_PICK)
         photoPickerIntent.type = "image/*"
@@ -1114,16 +1093,18 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             cardOptions[getString(R.string.takePhoto)] = {
+                viewModel.currentImageOperation = operation
                 PermissionUtils.requestCameraPermission(
                     this@LoyaltyCardEditActivity,
-                    operation.cameraPermissionCode
+                    PERMISSION_REQUEST_CAMERA
                 )
             }
 
             cardOptions[getString(R.string.addFromImage)] = {
+                viewModel.currentImageOperation = operation
                 PermissionUtils.requestStorageReadPermission(
                     this@LoyaltyCardEditActivity,
-                    operation.storagePermissionCode
+                    PERMISSION_REQUEST_STORAGE
                 )
             }
 
@@ -1520,72 +1501,25 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     enum class ImageOperation(
         val resourceId: Int,
         val locationType: ImageLocationType,
-        val cameraPermissionCode: Int,
-        val storagePermissionCode: Int,
-        val cameraTypeConstant: Int,
-        val fileTypeConstant: Int,
         val titleResource: Int
     ) {
-        FRONT(
-            R.id.frontImageHolder,
-            ImageLocationType.front,
-            PERMISSION_REQUEST_CAMERA_IMAGE_FRONT,
-            PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
-            Utils.CARD_IMAGE_FROM_CAMERA_FRONT,
-            Utils.CARD_IMAGE_FROM_FILE_FRONT,
-            R.string.setFrontImage
-        ),
-        BACK(
-            R.id.backImageHolder,
-            ImageLocationType.back,
-            PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
-            PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
-            Utils.CARD_IMAGE_FROM_CAMERA_BACK,
-            Utils.CARD_IMAGE_FROM_FILE_BACK,
-            R.string.setBackImage
-        ),
-        ICON(
-            R.id.thumbnail,
-            ImageLocationType.icon,
-            PERMISSION_REQUEST_CAMERA_IMAGE_ICON,
-            PERMISSION_REQUEST_STORAGE_IMAGE_ICON,
-            Utils.CARD_IMAGE_FROM_CAMERA_ICON,
-            Utils.CARD_IMAGE_FROM_FILE_ICON,
-            R.string.setIcon
-        );
+        FRONT(R.id.frontImageHolder, ImageLocationType.front, R.string.setFrontImage),
+        BACK(R.id.backImageHolder, ImageLocationType.back, R.string.setBackImage),
+        ICON(R.id.thumbnail, ImageLocationType.icon, R.string.setIcon);
 
         companion object {
             fun fromResourceId(resourceId: Int): ImageOperation =
                 entries.find { it.resourceId == resourceId }
                     ?: throw IllegalArgumentException("Unknown resource ID: $resourceId")
-
-            fun fromCameraPermission(permissionCode: Int): ImageOperation =
-                entries.find { it.cameraPermissionCode == permissionCode }
-                    ?: throw IllegalArgumentException("Unknown camera permission code: $permissionCode")
-
-            fun fromStoragePermission(permissionCode: Int): ImageOperation =
-                entries.find { it.storagePermissionCode == permissionCode }
-                    ?: throw IllegalArgumentException("Unknown storage permission code: $permissionCode")
-
-            fun fromImageType(imageType: Int): ImageOperation =
-                entries.find { it.cameraTypeConstant == imageType || it.fileTypeConstant == imageType }
-                    ?: throw IllegalArgumentException("Unknown image type: $imageType")
         }
-
-        fun matches(imageType: Int): Boolean =
-            cameraTypeConstant == imageType || fileTypeConstant == imageType
     }
 
     companion object {
         private const val TAG = "Catima"
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
-        private const val PERMISSION_REQUEST_CAMERA_IMAGE_FRONT = 100
-        private const val PERMISSION_REQUEST_CAMERA_IMAGE_BACK = 101
-        private const val PERMISSION_REQUEST_CAMERA_IMAGE_ICON = 102
-        private const val PERMISSION_REQUEST_STORAGE_IMAGE_FRONT = 103
-        private const val PERMISSION_REQUEST_STORAGE_IMAGE_BACK = 104
-        private const val PERMISSION_REQUEST_STORAGE_IMAGE_ICON = 105
+        private const val PERMISSION_REQUEST_CAMERA = 100
+        private const val PERMISSION_REQUEST_STORAGE = 101
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
         const val BUNDLE_UPDATE: String = "update"
