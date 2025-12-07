@@ -218,7 +218,7 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun onSaveComplete() {
+    fun onSaveAttemptFinished() {
         _saveState.value = SaveState.Idle
     }
 

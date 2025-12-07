@@ -8,10 +8,8 @@ import com.yalantis.ucrop.R as UCropR
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
 import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
@@ -75,16 +73,13 @@ import protect.card_locker.databinding.LoyaltyCardEditActivityBinding
 import protect.card_locker.viewmodels.LoyaltyCardEditActivityViewModel
 import java.io.FileNotFoundException
 import java.io.IOException
-import java.io.InvalidObjectException
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.text.ParseException
 import java.util.Calendar
-import java.util.Collections
 import java.util.Currency
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.Callable
 import androidx.core.net.toUri
 import androidx.core.view.size
 import androidx.core.view.isEmpty
@@ -388,7 +383,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             val barcodeFormat = CatimaBarcode.fromPrettyName(s.toString())
                             viewModel.setBarcodeType(barcodeFormat)
                             generateBarcode()
-
+//should i move this earlier?
                             if (!barcodeFormat.isSupported) {
                                 Toast.makeText(
                                     this@LoyaltyCardEditActivity,
@@ -507,6 +502,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
                             true
                         )
+                        //WHY NOT PASSING THE VIEW IN HERE?
                         requestedIcon() -> setThumbnailImage(
                             Utils.resizeBitmap(
                                 bitmap,
@@ -588,7 +584,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             "Card saved successfully!",
                             Toast.LENGTH_SHORT
                         ).show()
-                        viewModel.onSaveComplete()
+                        viewModel.onSaveAttemptFinished()
                         finish()
                     }
                     is SaveState.Error -> {
@@ -598,7 +594,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Toast.LENGTH_LONG
                         ).show()
                         binding.fabSave.isEnabled = true
-                        viewModel.onSaveComplete()
+                        viewModel.onSaveAttemptFinished()
                     }
                 }
             }
@@ -795,7 +791,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         Log.i(TAG, "To view card: ${viewModel.loyaltyCardId}")
         if (viewModel.updateLoyaltyCard) setTitle(R.string.editCardTitle) else setTitle(R.string.addCardTitle)
 
-        // Set up click listeners (these need to be set every time in onResume)
         enterButton.setOnClickListener(EditCardIdAndBarcode())
         barcodeImage.setOnClickListener(EditCardIdAndBarcode())
 
@@ -1151,6 +1146,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val startDate = minDate?.time ?: this.defaultMinDateOfDatePicker
         val endDate = maxDate?.time ?: this.defaultMaxDateOfDatePicker
         val dateValidator = when (loyaltyCardField) {
+            //are these reversed?
             LoyaltyCardField.validFrom -> DateValidatorPointBackward.before(endDate)
             LoyaltyCardField.expiry -> DateValidatorPointForward.from(startDate)
             else -> throw AssertionError("Unexpected field: $loyaltyCardField")
@@ -1486,6 +1482,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun getCurrencySymbol(currency: Currency): String {
         // Workaround for Android bug where the output of Currency.getSymbol() changes.
+        // TODO: Java version has no fallback - returns null if not found. Review if fallback reintroduces bug.
         return currencySymbols[currency.currencyCode] ?: currency.symbol
     }
 

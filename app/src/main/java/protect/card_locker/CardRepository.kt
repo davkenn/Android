@@ -56,7 +56,6 @@ class CardRepository(
             if (savedCard != null) {
                 ShortcutHelper.updateShortcuts(appContext, savedCard)
             }
-
             Result.success(cardId)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -70,6 +69,7 @@ class CardRepository(
         isDuplicate: Boolean = false
     ): Result<LoadedCardData> = withContext(Dispatchers.IO) {
         try {
+            //is this returning too soon
             val loyaltyCard = when {
                 importUri != null -> {
                     try {
