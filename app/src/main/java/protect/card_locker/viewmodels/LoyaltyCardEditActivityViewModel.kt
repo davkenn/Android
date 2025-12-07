@@ -202,13 +202,8 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun getImage(imageLocationType: ImageLocationType): Bitmap? {
-        return when (imageLocationType) {
-            ImageLocationType.icon -> loyaltyCard.getImageThumbnail(application)
-            ImageLocationType.front -> loyaltyCard.getImageFront(application)
-            ImageLocationType.back -> loyaltyCard.getImageBack(application)
-        }
-    }
+    fun getImage(imageLocationType: ImageLocationType): Bitmap? =
+        loyaltyCard.getImageForImageLocationType(application, imageLocationType)
 
     fun saveCard(selectedGroups: List<Group>) {
         if (_saveState.value is SaveState.Saving) return

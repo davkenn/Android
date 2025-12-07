@@ -519,6 +519,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             return@registerForActivityResult
                         }
                     }
+                    Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
                 } else {
                     Toast.makeText(
