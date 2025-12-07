@@ -89,6 +89,7 @@ import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.CardLoadState
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
+import protect.card_locker.viewmodels.UiEvent
 import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback, ColorPickerDialogListener {
@@ -551,50 +552,31 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Log.d(TAG, "Card data loaded successfully")
                         bindCardToUi(state)
                     }
-                    is CardLoadState.Error -> {
-                        Log.e(TAG, "Failed to load card: ${state.message}")
-                        Toast.makeText(
-                            this@LoyaltyCardEditActivity,
-                            state.message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        finish()
-                    }
                 }
             }
         }
 
         lifecycleScope.launch {
             viewModel.saveState.collectLatest { state ->
-                when (state) {
-                    is SaveState.Idle -> {
-                        binding.fabSave.isEnabled = true
+                binding.fabSave.isEnabled = state !is SaveState.Saving
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.uiEvents.collect { event ->
+                when (event) {
+                    is UiEvent.ShowToast -> {
+                        Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_SHORT).show()
                     }
-                    is SaveState.Saving -> {
-                        binding.fabSave.isEnabled = false
-                        Toast.makeText(
-                            this@LoyaltyCardEditActivity,
-                            "Saving...",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    is UiEvent.ShowError -> {
+                        Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_LONG).show()
                     }
-                    is SaveState.Success -> {
-                        Toast.makeText(
-                            this@LoyaltyCardEditActivity,
-                            "Card saved successfully!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        viewModel.onSaveAttemptFinished()
+                    is UiEvent.SaveSuccess -> {
+                        Toast.makeText(this@LoyaltyCardEditActivity, "Card saved successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     }
-                    is SaveState.Error -> {
-                        Toast.makeText(
-                            this@LoyaltyCardEditActivity,
-                            "Error: ${state.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        binding.fabSave.isEnabled = true
-                        viewModel.onSaveAttemptFinished()
+                    is UiEvent.LoadFailed -> {
+                        finish()
                     }
                 }
             }

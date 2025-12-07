@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeImageWriterTask
@@ -28,8 +30,6 @@ import android.graphics.Bitmap
 sealed interface SaveState {
     object Idle : SaveState
     object Saving : SaveState
-    data class Success(val cardId: Int) : SaveState
-    data class Error(val message: String) : SaveState
 }
 
 sealed interface CardLoadState {
@@ -39,7 +39,13 @@ sealed interface CardLoadState {
         val allGroups: List<Group>,
         val loyaltyCardGroups: List<Group>
     ) : CardLoadState
-    data class Error(val message: String) : CardLoadState
+}
+
+sealed interface UiEvent {
+    data class ShowToast(val message: String) : UiEvent
+    data class ShowError(val message: String) : UiEvent
+    object SaveSuccess : UiEvent
+    object LoadFailed : UiEvent
 }
 
 class LoyaltyCardEditActivityViewModel(
@@ -58,6 +64,9 @@ class LoyaltyCardEditActivityViewModel(
 
     private val _storeNameError = MutableStateFlow<String?>(null)
     val storeNameError = _storeNameError.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<UiEvent>(replay = 0)
+    val uiEvents = _uiEvents.asSharedFlow()
 
     var tempStoredOldBarcodeValue: String? = null
 
@@ -126,18 +135,19 @@ class LoyaltyCardEditActivityViewModel(
         viewModelScope.launch {
             val result = cardRepository.loadCardData(cardId, importUri, isDuplicate)
 
-            _cardState.value = result.fold(
+            result.fold(
                 onSuccess = { data ->
-                    CardLoadState.Success(
+                    _cardState.value = CardLoadState.Success(
                         loyaltyCard = data.loyaltyCard,
                         allGroups = data.allGroups,
                         loyaltyCardGroups = data.loyaltyCardGroups
                     )
                 },
                 onFailure = { exception ->
-                    CardLoadState.Error(
-                        exception.message ?: "An unknown error occurred while loading card data."
-                    )
+                    val message = exception.message ?: "An unknown error occurred while loading card data."
+                    Log.w(TAG, "Failed to load card: $message")
+                    _uiEvents.emit(UiEvent.ShowError(message))
+                    _uiEvents.emit(UiEvent.LoadFailed)
                 }
             )
         }
@@ -209,17 +219,17 @@ class LoyaltyCardEditActivityViewModel(
             val result = cardRepository.saveCard(loyaltyCard, selectedGroups)
             result.fold(
                 onSuccess = { cardId ->
-                    _saveState.value = SaveState.Success(cardId)
+                    _saveState.value = SaveState.Idle
+                    _uiEvents.emit(UiEvent.SaveSuccess)
                 },
                 onFailure = { exception ->
-                    _saveState.value = SaveState.Error(exception.message ?: "An unknown error occurred during save.")
+                    _saveState.value = SaveState.Idle
+                    val message = exception.message ?: "An unknown error occurred during save."
+                    Log.e(TAG, "Failed to save card: $message")
+                    _uiEvents.emit(UiEvent.ShowError(message))
                 }
             )
         }
-    }
-
-    fun onSaveAttemptFinished() {
-        _saveState.value = SaveState.Idle
     }
 
 }
