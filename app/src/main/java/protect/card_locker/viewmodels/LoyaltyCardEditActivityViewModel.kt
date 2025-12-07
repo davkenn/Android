@@ -143,15 +143,19 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
+    private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            state.loyaltyCard.block()
+            if (!onResuming && !onRestoring) {
+                hasChanged = true
+            }
+        }
+    }
+
     fun onStoreNameChanged(newName: String) {
         val trimmedName = newName.trim()
-
-        val currentState = _cardState.value
-        if (currentState is CardLoadState.Success) {
-            currentState.loyaltyCard.store = trimmedName
-            hasChanged = true
-        }
-
+        modifyCard { store = trimmedName }
         _storeNameError.value = if (trimmedName.isEmpty()) {
             application.getString(protect.card_locker.R.string.field_must_not_be_empty)
         } else {
@@ -159,75 +163,32 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun onNoteChanged(newNote: String) {
-        val currentState = _cardState.value
-        if (currentState is CardLoadState.Success) {
-            currentState.loyaltyCard.note = newNote
-            hasChanged = true
+    fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
+
+    fun onCardIdChanged(newCardId: String) = modifyCard {
+        cardId = newCardId
+        if (barcodeId == null || barcodeId == cardId) {
+            barcodeId = newCardId
         }
     }
 
-    fun onCardIdChanged(newCardId: String) {
-        val currentState = _cardState.value
-        if (currentState is CardLoadState.Success) {
-            val card = currentState.loyaltyCard
-            card.cardId = newCardId
-
-            if (card.barcodeId == null || card.barcodeId == card.cardId) {
-                card.barcodeId = newCardId
-            }
-            hasChanged = true
-        }
+    fun onBarcodeIdChanged(newBarcodeId: String) = modifyCard {
+        barcodeId = newBarcodeId.ifEmpty { null }
     }
 
-    fun onBarcodeIdChanged(newBarcodeId: String) {
-        val currentState = _cardState.value
-        if (currentState is CardLoadState.Success) {
-            currentState.loyaltyCard.barcodeId = newBarcodeId.ifEmpty { null }
-            hasChanged = true
-        }
-    }
+    fun setValidFrom(validFrom: Date?) = modifyCard { setValidFrom(validFrom) }
+    fun setExpiry(expiry: Date?) = modifyCard { setExpiry(expiry) }
+    fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
+    fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
+    fun setBarcodeId(barcodeId: String?) = modifyCard { setBarcodeId(barcodeId) }
+    fun setBarcodeType(barcodeType: CatimaBarcode?) = modifyCard { setBarcodeType(barcodeType) }
+    fun setHeaderColor(headerColor: Int?) = modifyCard { setHeaderColor(headerColor) }
 
-    fun setValidFrom(validFrom: Date?) {
-        loyaltyCard.setValidFrom(validFrom)
-        hasChanged = true
-    }
-
-    fun setExpiry(expiry: Date?) {
-        loyaltyCard.setExpiry(expiry)
-        hasChanged = true
-    }
-
-    fun setBalance(balance: BigDecimal) {
-        loyaltyCard.setBalance(balance)
-        hasChanged = true
-    }
-
-    fun setBalanceType(balanceType: Currency?) {
-        loyaltyCard.setBalanceType(balanceType)
-        hasChanged = true
-    }
-
-    fun setBarcodeId(barcodeId: String?) {
-        loyaltyCard.setBarcodeId(barcodeId)
-        hasChanged = true
-    }
-
-    fun setBarcodeType(barcodeType: CatimaBarcode?) {
-        loyaltyCard.setBarcodeType(barcodeType)
-        hasChanged = true
-    }
-
-    fun setHeaderColor(headerColor: Int?) {
-        loyaltyCard.setHeaderColor(headerColor)
-        hasChanged = true
-    }
-
-    fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
+    fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) = modifyCard {
         when (imageLocationType) {
-            ImageLocationType.icon -> loyaltyCard.setImageThumbnail(bitmap, path)
-            ImageLocationType.front -> loyaltyCard.setImageFront(bitmap, path)
-            ImageLocationType.back -> loyaltyCard.setImageBack(bitmap, path)
+            ImageLocationType.icon -> setImageThumbnail(bitmap, path)
+            ImageLocationType.front -> setImageFront(bitmap, path)
+            ImageLocationType.back -> setImageBack(bitmap, path)
         }
     }
 

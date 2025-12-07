@@ -522,8 +522,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             return@registerForActivityResult
                         }
                     }
-                    viewModel.hasChanged = true
-
                     cleanUpTempImages()
                 } else {
                     Toast.makeText(
@@ -693,8 +691,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindCardToUi(data: CardLoadState.Success) {
         viewModel.onResuming = true
 
-        val hadChanges = viewModel.hasChanged
-
         binding.storeNameEdit.setText(data.loyaltyCard.store)
         binding.noteEdit.setText(data.loyaltyCard.note)
         formatDateField(this, validFromField, data.loyaltyCard.validFrom)
@@ -772,7 +768,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         if (!viewModel.initDone) {
             viewModel.initDone = true
-            viewModel.hasChanged = hadChanges
         }
 
         generateBarcode()
