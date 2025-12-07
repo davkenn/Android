@@ -796,7 +796,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // long-pressed in the view activity
         if (viewModel.openSetIconMenu) {
             viewModel.openSetIconMenu = false
-            binding.thumbnail.callOnClick()
+            binding.thumbnail.requestFocus()
         }
     }
 
@@ -812,11 +812,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         cardImageFrontHolder.setOnClickListener(ChooseCardImage())
         cardImageBackHolder.setOnClickListener(ChooseCardImage())
+        binding.thumbnail.setOnClickListener(ChooseCardImage())
+
 
         val saveButton = binding.fabSave
         saveButton.setOnClickListener { v: View -> doSave() }
         saveButton.bringToFront()
-        binding.thumbnail.setOnClickListener(ChooseCardImage())
     }
 
     private fun setThumbnailImage(bitmap: Bitmap?) {
@@ -906,11 +907,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun formatBalanceCurrencyField(balanceType: Currency?) {
-        if (balanceType == null) {
-            balanceCurrencyField.setText(getString(R.string.points))
-        } else {
-            balanceCurrencyField.setText(getCurrencySymbol(balanceType))
-        }
+        balanceType?.let { balanceCurrencyField.setText(getCurrencySymbol(it)) }
+            ?: balanceCurrencyField.setText(getString(R.string.points))
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String?>, grantResults: IntArray) {
@@ -937,14 +935,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 PERMISSION_REQUEST_CAMERA_IMAGE_BACK,
                 PERMISSION_REQUEST_CAMERA_IMAGE_ICON -> {
                     val operation = ImageOperation.fromCameraPermission(requestCode)
-                    takePhotoForCard(operation.cameraTypeConstant)
+                    takePhotoForCard(operation)
                 }
 
                 PERMISSION_REQUEST_STORAGE_IMAGE_FRONT,
                 PERMISSION_REQUEST_STORAGE_IMAGE_BACK,
                 PERMISSION_REQUEST_STORAGE_IMAGE_ICON -> {
                     val operation = ImageOperation.fromStoragePermission(requestCode)
-                    selectImageFromGallery(operation.fileTypeConstant)
+                    selectImageFromGallery(operation)
                 }
             }
         } catch (e: IllegalArgumentException) {
@@ -1019,14 +1017,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
 
-    private fun takePhotoForCard(type: Int) {
+    private fun takePhotoForCard(op: ImageOperation) {
         val photoURI = FileProvider.getUriForFile(
             this@LoyaltyCardEditActivity,
             BuildConfig.APPLICATION_ID,
             Utils.createTempFile(this, TEMP_CAMERA_IMAGE_NAME)
         )
-        viewModel.requestedImageType = type
-        viewModel.currentImageOperation = ImageOperation.fromImageType(type)
+        viewModel.requestedImageType = op.cameraTypeConstant
+        viewModel.currentImageOperation = op
 
         try {
             mPhotoTakerLauncher.launch(photoURI)
@@ -1040,9 +1038,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun selectImageFromGallery(type: Int) {
-        viewModel.requestedImageType = type
-        viewModel.currentImageOperation = ImageOperation.fromImageType(type)
+    private fun selectImageFromGallery(op: ImageOperation) {
+        viewModel.requestedImageType = op.fileTypeConstant
+        viewModel.currentImageOperation = op
 
         val photoPickerIntent = Intent(Intent.ACTION_PICK)
         photoPickerIntent.type = "image/*"
@@ -1302,7 +1300,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
-        val selectedGroups = mutableListOf<Group>()
+        val selectedGroups= mutableListOf<Group>()
         for (chipId in binding.groupChips.checkedChipIds) {
             val chip = binding.groupChips.findViewById<Chip>(chipId)
             chip?.tag?.let { selectedGroups.add(it as Group) }
