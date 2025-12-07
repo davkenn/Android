@@ -1219,6 +1219,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
+        if (viewModel.tempStoredOldBarcodeValue != null) {
+            askBarcodeChange { doSave() }
+            return
+        }
+
         var hasError = false
         if (binding.storeNameEdit.text.toString().trim().isEmpty()) {
             binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
