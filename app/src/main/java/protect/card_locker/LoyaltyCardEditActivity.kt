@@ -182,7 +182,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             val isUpdate = b?.getBoolean(BUNDLE_UPDATE, false) ?: false
             val isDuplicate = b?.getBoolean(BUNDLE_DUPLICATE_ID, false) ?: false
 
-            viewModel.loyaltyCardId = cardId
             viewModel.updateLoyaltyCard = isUpdate
             viewModel.duplicateFromLoyaltyCardId = isDuplicate
             viewModel.importLoyaltyCardUri = importUri
@@ -764,7 +763,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     @SuppressLint("DefaultLocale")
     override fun onResume() {
         super.onResume()
-        Log.i(TAG, "To view card: ${viewModel.loyaltyCardId}")
+        Log.i(TAG, "To view card: ${viewModel.loyaltyCard.id}")
         if (viewModel.updateLoyaltyCard) setTitle(R.string.editCardTitle) else setTitle(R.string.addCardTitle)
 
         enterButton.setOnClickListener(EditCardIdAndBarcode())

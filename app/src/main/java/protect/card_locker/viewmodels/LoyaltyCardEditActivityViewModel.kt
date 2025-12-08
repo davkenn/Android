@@ -101,7 +101,6 @@ class LoyaltyCardEditActivityViewModel(
 
     var addGroup: String? = null
     var openSetIconMenu: Boolean = false
-    var loyaltyCardId: Int = 0
     var updateLoyaltyCard: Boolean = false
     var duplicateFromLoyaltyCardId: Boolean = false
     var importLoyaltyCardUri: Uri? = null
@@ -180,10 +179,6 @@ class LoyaltyCardEditActivityViewModel(
         if (barcodeId == null || barcodeId == cardId) {
             barcodeId = newCardId
         }
-    }
-
-    fun onBarcodeIdChanged(newBarcodeId: String) = modifyCard {
-        barcodeId = newBarcodeId.ifEmpty { null }
     }
 
     fun setValidFrom(validFrom: Date?) = modifyCard { setValidFrom(validFrom) }
