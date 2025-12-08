@@ -422,7 +422,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         mPhotoTakerLauncher = registerForActivityResult(TakePicture()) {
             result: Boolean ->
-            if (result) { startCropper("$cacheDir/$TEMP_CAMERA_IMAGE_NAME") }
+            if (result) { startCropperUri(File(cacheDir, TEMP_CAMERA_IMAGE_NAME).toUri()) }
         }
 
         // android 11: wanted to swap it to ActivityResultContracts.GetContent but then it shows a file browsers that shows image mime types, offering gallery in the file browser
@@ -592,15 +592,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun cleanUpTempImages() {
         try {
-            val cameraTempFile = File(cacheDir, TEMP_CAMERA_IMAGE_NAME)
-            if (cameraTempFile.exists()) {
-                cameraTempFile.delete()
-            }
-
-            val cropTempFile = File(cacheDir, TEMP_CROP_IMAGE_NAME)
-            if (cropTempFile.exists()) {
-                cropTempFile.delete()
-            }
+            File(cacheDir, TEMP_CAMERA_IMAGE_NAME).delete()
+            File(cacheDir, TEMP_CROP_IMAGE_NAME).delete()
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up temporary image files", e)
         }
@@ -1276,11 +1269,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         return super.onOptionsItemSelected(item)
     }
 
-    fun startCropper(sourceImagePath: String?) {
-        startCropperUri(("file://$sourceImagePath").toUri())
-    }
-
-    fun startCropperUri(sourceUri: Uri) {
+    private fun startCropperUri(sourceUri: Uri) {
         Log.d("cropper", "launching cropper with image ${sourceUri.path}")
         val cropOutput = Utils.createTempFile(this, TEMP_CROP_IMAGE_NAME)
         val destUri = "file://${cropOutput.absolutePath}".toUri()
@@ -1417,9 +1406,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val headerColor = viewModel.loyaltyCard.headerColor ?: return
         if (viewModel.loyaltyCard.getImageThumbnail(this) == null) {
             binding.thumbnail.setBackgroundColor(headerColor)
-            val letterBitmap = Utils.generateIcon(this, store, headerColor)
-            letterBitmap?.let { binding.thumbnail.setImageBitmap(letterBitmap.letterTile) } ?:
-                binding.thumbnail.setImageBitmap(null)
+            binding.thumbnail.setImageBitmap(Utils.generateIcon(this, store, headerColor)?.letterTile)
         }
         binding.thumbnail.minimumWidth = binding.thumbnail.height
     }
@@ -1492,20 +1479,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     companion object {
         private const val TAG = "Catima"
-
         // Temp file constants
         private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
         private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
         private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
-
         // Date picker keys
         private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
-
         // Permission request codes
         private const val PERMISSION_REQUEST_CAMERA = 100
         private const val PERMISSION_REQUEST_STORAGE = 101
-
         // Bundle keys
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
