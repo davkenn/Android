@@ -62,9 +62,6 @@ class LoyaltyCardEditActivityViewModel(
     private val _cardState = MutableStateFlow<CardLoadState>(CardLoadState.Loading)
     val cardState = _cardState.asStateFlow()
 
-    private val _storeNameError = MutableStateFlow<String?>(null)
-    val storeNameError = _storeNameError.asStateFlow()
-
     private val _uiEvents = MutableSharedFlow<UiEvent>(replay = 0)
     val uiEvents = _uiEvents.asSharedFlow()
 
@@ -162,15 +159,7 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun onStoreNameChanged(newName: String) {
-        val trimmedName = newName.trim()
-        modifyCard { store = trimmedName }
-        _storeNameError.value = if (trimmedName.isEmpty()) {
-            application.getString(protect.card_locker.R.string.field_must_not_be_empty)
-        } else {
-            null
-        }
-    }
+    fun onStoreNameChanged(newName: String) = modifyCard { store = newName.trim() }
 
     fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
 

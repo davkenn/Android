@@ -199,9 +199,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                if (viewModel.onResuming || viewModel.onRestoring) return
                 val storeName = s.toString().trim()
                 viewModel.onStoreNameChanged(storeName)
                 generateIcon(storeName)
+                binding.storeNameEdit.error = if (storeName.isEmpty()) {
+                    getString(R.string.field_must_not_be_empty)
+                } else null
             }
         })
 
@@ -582,11 +586,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        lifecycleScope.launch {
-            viewModel.storeNameError.collectLatest { error ->
-                binding.storeNameEdit.error = error
-            }
-        }
     }
 
     private fun cleanUpTempImages() {
