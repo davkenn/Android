@@ -809,9 +809,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                     showDatePicker(
                         loyaltyCardField,
-                        dateField.tag as Date?,
-                        if (loyaltyCardField == LoyaltyCardField.expiry) binding.validFromField.tag as Date? else null,// if the expiry date is being set, set date picker's minDate to the 'valid from' date
-                        if (loyaltyCardField == LoyaltyCardField.validFrom) binding.expiryField.tag as Date? else null // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
+                        dateField.tag as? Date,
+                        if (loyaltyCardField == LoyaltyCardField.expiry) binding.validFromField.tag as? Date else null,// if the expiry date is being set, set date picker's minDate to the 'valid from' date
+                        if (loyaltyCardField == LoyaltyCardField.validFrom) binding.expiryField.tag as? Date else null // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
                     )
                 }
             }
@@ -1081,7 +1081,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val startDate = minDate?.time ?: this.defaultMinDateOfDatePicker
         val endDate = maxDate?.time ?: this.defaultMaxDateOfDatePicker
         val dateValidator = when (loyaltyCardField) {
-            //are these reversed?
             LoyaltyCardField.validFrom -> DateValidatorPointBackward.before(endDate)
             LoyaltyCardField.expiry -> DateValidatorPointForward.from(startDate)
             else -> throw AssertionError("Unexpected field: $loyaltyCardField")
