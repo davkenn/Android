@@ -190,7 +190,7 @@ class LoyaltyCardEditActivityTest {
             shadowOf(Looper.getMainLooper()).idle()
 
             assertTrue(activity.viewModel.updateLoyaltyCard)
-            assertEquals(42, activity.viewModel.loyaltyCardId)
+            assertEquals(42, activity.viewModel.loyaltyCard.id)
         }
 
         @Test
@@ -203,7 +203,7 @@ class LoyaltyCardEditActivityTest {
             }
 
             assertTrue(activity.viewModel.duplicateFromLoyaltyCardId)
-            assertEquals(99, activity.viewModel.loyaltyCardId)
+            assertEquals(99, activity.viewModel.loyaltyCard.id)
         }
 
         @Test
