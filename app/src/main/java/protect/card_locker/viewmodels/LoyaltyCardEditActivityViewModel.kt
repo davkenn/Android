@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeImageWriterTask
 import protect.card_locker.CardRepository
@@ -50,7 +52,8 @@ sealed interface UiEvent {
 
 class LoyaltyCardEditActivityViewModel(
     private val application: Application,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : ViewModel() {
     private companion object {
         private const val TAG = "Catima"
@@ -81,7 +84,7 @@ class LoyaltyCardEditActivityViewModel(
         if (type == TaskHandler.TYPE.BARCODE) {
             cancelBarcodeGeneration()
         }
-        barcodeGenerationJob = viewModelScope.launch {
+        barcodeGenerationJob = viewModelScope.launch(dispatcher) {
             try {
                 callable.runSuspending()
             } catch (e: Exception) {
@@ -115,12 +118,6 @@ class LoyaltyCardEditActivityViewModel(
             }
         }
 
-    val allGroups: List<Group>
-        get() = (_cardState.value as? CardLoadState.Success)?.allGroups ?: emptyList()
-
-    val loyaltyCardGroups: List<Group>
-        get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCardGroups ?: emptyList()
-
     fun loadCard(
         cardId: Int = 0,
         importUri: Uri? = null,
@@ -128,7 +125,7 @@ class LoyaltyCardEditActivityViewModel(
     ) {
         _cardState.value = CardLoadState.Loading
 
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             val result = cardRepository.loadCardData(cardId, importUri, isDuplicate)
 
             result.fold(
@@ -194,7 +191,7 @@ class LoyaltyCardEditActivityViewModel(
 
         _saveState.value = SaveState.Saving
 
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             val result = cardRepository.saveCard(loyaltyCard, selectedGroups)
             result.fold(
                 onSuccess = { cardId ->
@@ -214,14 +211,16 @@ class LoyaltyCardEditActivityViewModel(
 }
 class LoyaltyCardEditViewModelFactory(
     private val application: Application,
-    private val database: SQLiteDatabase
+    private val database: SQLiteDatabase,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LoyaltyCardEditActivityViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return LoyaltyCardEditActivityViewModel(
                 application,
-                CardRepository(database, application)
+                CardRepository(database, application),
+                dispatcher
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -1,173 +1,130 @@
-//package protect.card_locker.viewmodels
-//
-//import android.app.Application
-//import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-//import androidx.test.core.app.ApplicationProvider
-//import kotlinx.coroutines.Dispatchers
-//import kotlinx.coroutines.ExperimentalCoroutinesApi
-//import kotlinx.coroutines.test.StandardTestDispatcher
-//import kotlinx.coroutines.test.advanceUntilIdle
-//import kotlinx.coroutines.test.resetMain
-//import kotlinx.coroutines.test.runTest
-//import kotlinx.coroutines.test.setMain
-//import org.junit.After
-//import org.junit.Assert.assertEquals
-//import org.junit.Assert.assertNotNull
-//import org.junit.Assert.assertTrue
-//import org.junit.Before
-//import org.junit.Rule
-//import org.junit.Test
-//import org.junit.runner.RunWith
-//import org.robolectric.RobolectricTestRunner
-//import org.robolectric.shadows.ShadowLog
-//import protect.card_locker.CardRepository
-//import protect.card_locker.LoyaltyCard
-//
-//@OptIn(ExperimentalCoroutinesApi::class)
-//@RunWith(RobolectricTestRunner::class)
-//class LoyaltyCardEditActivityViewModelTest {
-//
-//    @get:Rule
-//    val instantExecutorRule = InstantTaskExecutorRule()
-//
-//    private val testDispatcher = StandardTestDispatcher()
-//
-//    private lateinit var application: Application
-//    private lateinit var cardRepository: CardRepository
-//    private lateinit var viewModel: LoyaltyCardEditActivityViewModel
-//
-//    @Before
-//    fun setUp() {
-//        ShadowLog.stream = System.out
-//        Dispatchers.setMain(testDispatcher)
-//
-//        application = ApplicationProvider.getApplicationContext()
-//        cardRepository = CardRepository(application)
-//        viewModel = LoyaltyCardEditActivityViewModel(application, cardRepository)
-//    }
-//
-//    @After
-//    fun tearDown() {
-//        Dispatchers.resetMain()
-//    }
-//
-//    @Test
-//    fun testViewModelCreation() {
-//        assertNotNull(viewModel)
-//        assertEquals(CardLoadState.Loading, viewModel.cardState.value)
-//        assertEquals(SaveState.Idle, viewModel.saveState.value)
-//    }
-//
-//    @Test
-//    fun testInitialState() {
-//        // Verify initial values
-//        assertEquals(false, viewModel.initialized)
-//        assertEquals(false, viewModel.hasChanged)
-//        assertEquals(false, viewModel.updateLoyaltyCard)
-//        assertEquals(0, viewModel.loyaltyCardId)
-//    }
-//
-//    @Test
-//    fun testLoadNewCard() = runTest {
-//        // Load a new card (cardId = 0)
-//        viewModel.loadCard(cardId = 0)
-//
-//        // Advance coroutines
-//        advanceUntilIdle()
-//
-//        // Verify state is Success
-//        val state = viewModel.cardState.value
-//        assertTrue(state is CardLoadState.Success)
-//
-//        // Verify card data
-//        val successState = state as CardLoadState.Success
-//        assertNotNull(successState.loyaltyCard)
-//        assertEquals(0, successState.loyaltyCard.id)
-//    }
-//
-//    @Test
-//    fun testLoyaltyCardProperty_returnsNewCardWhenNotLoaded() {
-//        // Before loading, loyaltyCard should return empty card
-//        val card = viewModel.loyaltyCard
-//        assertNotNull(card)
-//        assertEquals(0, card.id)
-//    }
-//
-//    @Test
-//    fun testAllGroupsProperty_returnsEmptyListWhenNotLoaded() {
-//        // Before loading, allGroups should return empty list
-//        val groups = viewModel.allGroups
-//        assertNotNull(groups)
-//        assertTrue(groups.isEmpty())
-//    }
-//
-//    @Test
-//    fun testLoyaltyCardGroupsProperty_returnsEmptyListWhenNotLoaded() {
-//        // Before loading, loyaltyCardGroups should return empty list
-//        val groups = viewModel.loyaltyCardGroups
-//        assertNotNull(groups)
-//        assertTrue(groups.isEmpty())
-//    }
-//
-//    @Test
-//    fun testSaveStateInitiallyIdle() {
-//        assertEquals(SaveState.Idle, viewModel.saveState.value)
-//    }
-//
-//    @Test
-//    fun testOnSaveComplete_resetsStateToIdle() {
-//        // Manually set state to Error
-//        viewModel.onSaveComplete()
-//
-//        // Verify it's Idle
-//        assertEquals(SaveState.Idle, viewModel.saveState.value)
-//    }
-//
-//    @Test
-//    fun testBarcodeGenerationCancellation() {
-//        // Should not throw exception
-//        viewModel.cancelBarcodeGeneration()
-//        assertTrue(true)
-//    }
-//
-//    @Test
-//    fun testStoreNameValidation_emptyName() = runTest {
-//        // Load a card first so we have CardLoadState.Success
-//        viewModel.loadCard(cardId = 0)
-//        advanceUntilIdle()
-//
-//        // Change store name to empty string
-//        viewModel.onStoreNameChanged("")
-//
-//        // Should set error
-//        assertNotNull(viewModel.storeNameError.value)
-//        assertTrue(viewModel.storeNameError.value!!.contains("must not be empty"))
-//    }
-//
-//    @Test
-//    fun testStoreNameValidation_validName() = runTest {
-//        // Load a card first
-//        viewModel.loadCard(cardId = 0)
-//        advanceUntilIdle()
-//
-//        // Change store name to valid string
-//        viewModel.onStoreNameChanged("Target")
-//
-//        // Should clear error
-//        assertEquals(null, viewModel.storeNameError.value)
-//    }
-//
-//    @Test
-//    fun testStoreNameUpdatesCard() = runTest {
-//        // Load a card first
-//        viewModel.loadCard(cardId = 0)
-//        advanceUntilIdle()
-//
-//        // Change store name
-//        viewModel.onStoreNameChanged("Costco")
-//
-//        // Should update the loyalty card
-//        assertEquals("Costco", viewModel.loyaltyCard.store)
-//        assertEquals(true, viewModel.hasChanged)
-//    }
-//}
+package protect.card_locker.viewmodels
+
+import android.app.Application
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.shadows.ShadowLog
+import protect.card_locker.CardRepository
+import protect.card_locker.LoadedCardData
+import protect.card_locker.LoyaltyCard
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+class LoyaltyCardEditActivityViewModelTest {
+
+    @get:Rule
+    val instantExecutorRule = InstantTaskExecutorRule()
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    private lateinit var application: Application
+    private lateinit var cardRepository: CardRepository
+    private lateinit var viewModel: LoyaltyCardEditActivityViewModel
+
+    @Before
+    fun setUp() {
+        ShadowLog.stream = System.out
+
+        application = ApplicationProvider.getApplicationContext()
+        cardRepository = mock()
+
+        // Inject the test dispatcher - no Dispatchers.setMain() needed
+        viewModel = LoyaltyCardEditActivityViewModel(
+            application,
+            cardRepository,
+            testDispatcher
+        )
+    }
+
+    @Test
+    fun testViewModelCreation() {
+        assertNotNull(viewModel)
+        assertEquals(CardLoadState.Loading, viewModel.cardState.value)
+        assertEquals(SaveState.Idle, viewModel.saveState.value)
+    }
+
+    @Test
+    fun testInitialState() {
+        assertEquals(false, viewModel.initialized)
+        assertEquals(false, viewModel.hasChanged)
+        assertEquals(false, viewModel.updateLoyaltyCard)
+    }
+
+    @Test
+    fun testLoadNewCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        val state = viewModel.cardState.value
+        assertTrue(state is CardLoadState.Success)
+
+        val successState = state as CardLoadState.Success
+        assertNotNull(successState.loyaltyCard)
+        // Default LoyaltyCard() sets id to -1
+        assertEquals(-1, successState.loyaltyCard.id)
+    }
+
+    @Test
+    fun testLoyaltyCardProperty_returnsNewCardWhenNotLoaded() {
+        // Before loading, loyaltyCard returns a new LoyaltyCard with default id of -1
+        val card = viewModel.loyaltyCard
+        assertNotNull(card)
+        assertEquals(-1, card.id)
+    }
+
+    @Test
+    fun testSaveStateInitiallyIdle() {
+        assertEquals(SaveState.Idle, viewModel.saveState.value)
+    }
+
+    @Test
+    fun testBarcodeGenerationCancellation() {
+        viewModel.cancelBarcodeGeneration()
+        assertTrue(true)
+    }
+
+    @Test
+    fun testStoreNameUpdatesCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        viewModel.onStoreNameChanged("Costco")
+
+        assertEquals("Costco", viewModel.loyaltyCard.store)
+        assertEquals(true, viewModel.hasChanged)
+    }
+}
