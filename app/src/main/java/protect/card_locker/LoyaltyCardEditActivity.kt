@@ -618,7 +618,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.setHeaderColor(color)
         }
 
-        setThumbnailImage(viewModel.getImage(ImageLocationType.icon))
         setCardImage(
             ImageOperation.FRONT,
             viewModel.getImage(ImageLocationType.front),
@@ -630,9 +629,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             true
         )
         setCardImage(
-            ImageOperation.BACK,
-            viewModel.getImage(ImageLocationType.back),
-            true
+            ImageOperation.ICON,
+            viewModel.getImage(ImageLocationType.icon),
+            false
         )
 
 
@@ -679,7 +678,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun setThumbnailImage(bitmap: Bitmap?) {
-        setCardImage(ImageLocationType.icon, binding.thumbnail, bitmap, false)
 
         if (bitmap != null) {
             val headerColor = Utils.getHeaderColorFromImage(
@@ -719,6 +717,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             if (applyFallback) {
                 binding.frontImage.setImageResource(R.drawable.ic_camera_white)
             }
+        }
+        if (imageop == ImageOperation.ICON) {
+            setThumbnailImage(bitmap)
         }
     }
 
@@ -1012,13 +1013,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 viewModel.getImage(ImageLocationType.front)?.let {
                     cardOptions[getString(R.string.useFrontImage)] = {
-                        setThumbnailImage(Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()))
+                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()), false)
+
                     }
                 }
 
                 viewModel.getImage(ImageLocationType.back)?.let {
                     cardOptions[getString(R.string.useBackImage)] = {
-                        setThumbnailImage(Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()))
+                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()), false)
                     }
                 }
             }

@@ -444,8 +444,8 @@ class LoyaltyCardEditActivityIntegrationTest {
             cardIdField.setText("12345678")
             barcodeField.setText("87654321")
             barcodeTypeField.setText(CatimaBarcode.fromBarcode(BarcodeFormat.QR_CODE).prettyName())
-            activity.setCardImage(ImageLocationType.front, frontImageView, frontBitmap, true)
-            activity.setCardImage(ImageLocationType.back, backImageView, backBitmap, true)
+            activity.setCardImage(LoyaltyCardEditActivity.ImageOperation.FRONT,  frontBitmap, true)
+            activity.setCardImage(LoyaltyCardEditActivity.ImageOperation.BACK,  backBitmap, true)
 
             shadowOf(getMainLooper()).idle()
 
