@@ -1,6 +1,5 @@
 package protect.card_locker
 
-import protect.card_locker.R
 import android.R as AndroidR
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
@@ -23,18 +22,14 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResult
@@ -44,7 +39,6 @@ import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
@@ -52,7 +46,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.datepicker.CalendarConstraints
 
@@ -416,42 +409,26 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 Log.d("cropper", "ucrop produced image at $debugUri")
                 val bitmap = BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
-                bitmap?.let{
-                    setCardImage()
-                }
-                if (bitmap != null) {
-                    when {
-                        requestedFrontImage() -> setCardImage(
-                            ImageLocationType.front,
-                            binding.frontImage,
-                            Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
-                            true
-                        )
-                        requestedBackImage() -> setCardImage(
-                            ImageLocationType.back,
-                            binding.backImage,
-                            Utils.resizeBitmap(bitmap, Utils.BITMAP_SIZE_BIG.toDouble()),
-                            true
-                        )
-                        //WHY NOT PASSING THE VIEW IN HERE?
-                        requestedIcon() -> setThumbnailImage(
-                            Utils.resizeBitmap(
-                                bitmap,
-                                Utils.BITMAP_SIZE_SMALL.toDouble()
-                            )
-                        )
-                        else -> {
-                            Toast.makeText(
-                                this,
-                                R.string.generic_error_please_retry,
-                                Toast.LENGTH_LONG
-                            ).show()
-                            return@registerForActivityResult
-                        }
-                    }
+                bitmap?.let {
+                    val it = if (getCurrentImageOperation() == ImageOperation.ICON) {
+                        Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble())
+                    } else Utils.resizeBitmap(it, Utils.BITMAP_SIZE_BIG.toDouble())
+
+                    setCardImage(getCurrentImageOperation(), it, true)
+                    //inside or outside let block?
                     Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
-                } else {
+                }
+
+                        //WHY NOT PASSING THE VIEW IN HERE?
+                //        requestedIcon() -> setThumbnailImage(
+                  //          Utils.resizeBitmap(
+                      //          bitmap,
+                    //            Utils.BITMAP_SIZE_SMALL.toDouble()
+                 //           )
+
+
+              ?:
                     Toast.makeText(
                         this@LoyaltyCardEditActivity,
                         R.string.errorReadingImage,
@@ -459,7 +436,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     ).show()
                 }
             }
-        }
+
 
         mCropperOptions = UCrop.Options()
 
@@ -643,17 +620,21 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         setThumbnailImage(viewModel.getImage(ImageLocationType.icon))
         setCardImage(
-            ImageLocationType.front,
-            binding.frontImage,
+            ImageOperation.FRONT,
             viewModel.getImage(ImageLocationType.front),
             true
         )
         setCardImage(
-            ImageLocationType.back,
-            binding.backImage,
+            ImageOperation.BACK,
             viewModel.getImage(ImageLocationType.back),
             true
         )
+        setCardImage(
+            ImageOperation.BACK,
+            viewModel.getImage(ImageLocationType.back),
+            true
+        )
+
 
         if (!viewModel.initDone) {
             viewModel.initDone = true
@@ -727,16 +708,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     fun setCardImage(
-        imageLocationType: ImageLocationType,
-        imageView: ImageView,
+        imageop: ImageOperation?,
         bitmap: Bitmap?,
         applyFallback: Boolean
     ) {
-        viewModel.setCardImage(imageLocationType, bitmap, null)
+        if (imageop == null) return
+        viewModel.setCardImage(imageop.locationType, bitmap, null)
 
-        bitmap?.let { imageView.setImageBitmap(it) } ?: run {
+        bitmap?.let { binding.frontImage.setImageBitmap(it) } ?: run {
             if (applyFallback) {
-                imageView.setImageResource(R.drawable.ic_camera_white)
+                binding.frontImage.setImageResource(R.drawable.ic_camera_white)
             }
         }
     }
@@ -1015,7 +996,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             if (currentImage != null && operation != ImageOperation.ICON) {
                 cardOptions[getString(R.string.removeImage)] = {
-                    setCardImage(operation.locationType, targetView, null, true)
+                    setCardImage(operation, null, true)
                 }
             }
 
@@ -1439,8 +1420,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val locationType: ImageLocationType,
         val titleResource: Int
     ) {
-        FRONT(R.id.frontImageHolder, ImageLocationType.front, R.string.setFrontImage),
-        BACK(R.id.backImageHolder, ImageLocationType.back, R.string.setBackImage),
+        FRONT(R.id.frontImage, ImageLocationType.front, R.string.setFrontImage),
+        BACK(R.id.backImage, ImageLocationType.back, R.string.setBackImage),
         ICON(R.id.thumbnail, ImageLocationType.icon, R.string.setIcon);
 
         companion object {
