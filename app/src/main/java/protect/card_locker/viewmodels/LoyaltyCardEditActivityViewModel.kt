@@ -110,9 +110,9 @@ class LoyaltyCardEditActivityViewModel(
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
     var tempLoyaltyCardField: LoyaltyCardField? = null
 
-    var loyaltyCard: LoyaltyCard
+     var loyaltyCard: LoyaltyCard
         get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCard ?: LoyaltyCard()
-        set(value) {
+        private set(value) {
             val currentState = _cardState.value
             if (currentState is CardLoadState.Success) {
                 _cardState.value = currentState.copy(loyaltyCard = value)
