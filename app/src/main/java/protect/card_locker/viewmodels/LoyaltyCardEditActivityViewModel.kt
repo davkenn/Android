@@ -104,6 +104,7 @@ class LoyaltyCardEditActivityViewModel(
     var updateLoyaltyCard: Boolean = false
     var duplicateFromLoyaltyCardId: Boolean = false
     var importLoyaltyCardUri: Uri? = null
+    var loyaltyCardId: Int = 0
 
     var tabIndex: Int = 0
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
@@ -123,6 +124,7 @@ class LoyaltyCardEditActivityViewModel(
         importUri: Uri? = null,
         isDuplicate: Boolean = false
     ) {
+        loyaltyCardId = cardId
         _cardState.value = CardLoadState.Loading
 
         viewModelScope.launch(dispatcher) {

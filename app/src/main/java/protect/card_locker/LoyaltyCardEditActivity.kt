@@ -715,7 +715,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // long-pressed in the view activity
         if (viewModel.openSetIconMenu) {
             viewModel.openSetIconMenu = false
-            binding.thumbnail.requestFocus()
+            binding.thumbnail.performClick()
         }
     }
 

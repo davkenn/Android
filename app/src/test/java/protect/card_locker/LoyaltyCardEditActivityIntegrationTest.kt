@@ -84,11 +84,11 @@ class LoyaltyCardEditActivityIntegrationTest {
     }
 
     private fun registerMediaStoreIntentHandler() {
-        val packageManager = RuntimeEnvironment.application.packageManager
+        val packageManager = RuntimeEnvironment.getApplication().packageManager
 
         val info = ResolveInfo().apply {
             isDefault = true
-            activityInfo = android.content.pm.ActivityInfo().apply {
+            activityInfo = ActivityInfo().apply {
                 applicationInfo = ApplicationInfo().apply {
                     packageName = "does.not.matter"
                 }
