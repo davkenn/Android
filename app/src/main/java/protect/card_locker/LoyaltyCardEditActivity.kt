@@ -403,13 +403,22 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 Log.d("cropper", "ucrop returned a null intent")
                 return@registerForActivityResult
             }
-            if (result.resultCode == RESULT_OK) {
-                val debugUri = UCrop.getOutput(intent)
-                if (debugUri == null) {
+
+            if (result.resultCode == UCrop.RESULT_ERROR) {
+                val e = UCrop.getError(intent) ?:
+                throw RuntimeException("ucrop returned error state but not an error!")
+                Log.e("cropper error", e.toString())
+            }
+            else if (result.resultCode == RESULT_OK) {
+
+                val debugUri = UCrop.getOutput(intent) ?:
                     throw RuntimeException("ucrop returned success but not destination uri!")
-                }
+
                 Log.d("cropper", "ucrop produced image at $debugUri")
                 val bitmap = BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
+                bitmap?.let{
+                    setCardImage()
+                }
                 if (bitmap != null) {
                     when {
                         requestedFrontImage() -> setCardImage(
@@ -449,10 +458,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Toast.LENGTH_LONG
                     ).show()
                 }
-            } else if (result.resultCode == UCrop.RESULT_ERROR) {
-                val e = UCrop.getError(intent) ?:
-                    throw RuntimeException("ucrop returned error state but not an error!")
-                Log.e("cropper error", e.toString())
             }
         }
 
