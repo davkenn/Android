@@ -275,7 +275,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         })
 
         binding.barcodeIdField.addTextChangedListener(object : SimpleTextWatcher() {
-            var lastValue: CharSequence? = null
+            private var lastValue: CharSequence? = null
+            private val menuSameAsCardId by lazy { getString(R.string.sameAsCardId) }
+            private val menuSetCustom by lazy { getString(R.string.setBarcodeId) }
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
                 lastValue = s
@@ -284,84 +286,36 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (viewModel.onResuming || viewModel.onRestoring) return
 
-                if (s.toString() == getString(R.string.sameAsCardId)) {
-                    // If the user manually changes the barcode again make sure we disable the
-                    // request to update it to match the card id (if changed)
-                    viewModel.tempStoredOldBarcodeValue = null
-                    viewModel.setBarcodeId(null)
-                    generateBarcode()
-
-                } else if (s.toString() == getString(R.string.setBarcodeId)) {
-                    if (lastValue.toString() != getString(R.string.setBarcodeId)) {
-                        binding.barcodeIdField.setText(lastValue)
-                    }
-
-                    val contentPadding = resources.getDimensionPixelSize(R.dimen.alert_dialog_content_padding)
-                    val input = EditText(this@LoyaltyCardEditActivity).apply {
-                        inputType = InputType.TYPE_CLASS_TEXT
-                        layoutParams = FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT
-                        ).apply {
-                            leftMargin = contentPadding
-                            topMargin = contentPadding / 2
-                            rightMargin = contentPadding
-                        }
-                        viewModel.loyaltyCard.barcodeId?.let { setText(it) }
-                    }
-                    val container = FrameLayout(this@LoyaltyCardEditActivity).apply {
-                        addView(input)
-                    }
-                    MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity).apply {
-                        setTitle(R.string.setBarcodeId)
-                        setView(container)
-                        setPositiveButton(getString(R.string.ok)) { _, _ ->
-                            // If the user manually changes the barcode again make sure we disable the
-                            // request to update it to match the card id (if changed)
-                            viewModel.tempStoredOldBarcodeValue = null
-                            binding.barcodeIdField.setText(input.text)
-                        }
-                        setNegativeButton(getString(R.string.cancel)) { dialog, _ -> dialog.cancel() }
-                    }.create().apply {
-                        show()
-                        window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-                    }
-                    input.requestFocus()
-                } else {
-                    viewModel.setBarcodeId(s.toString())
-                    generateBarcode()
+                when (s.toString()) {
+                    menuSameAsCardId -> onSyncWithCardIdSelected()
+                    menuSetCustom -> onSetCustomBarcodeSelected(lastValue)
+                    else -> onBarcodeValueSet(s.toString())
                 }
             }
 
             override fun afterTextChanged(s: Editable?) {
-                binding.barcodeIdField.setAdapter(createDropdownAdapter(
-                    listOf(getString(R.string.sameAsCardId), getString(R.string.setBarcodeId))
-                ))
+                binding.barcodeIdField.setAdapter(
+                    createDropdownAdapter(listOf(menuSameAsCardId, menuSetCustom))
+                )
             }
         })
 
         binding.barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.toString().isNotEmpty()) {
-                    if (s.toString() == getString(R.string.noBarcode)) {
-                        viewModel.setBarcodeType(null)
+                val bctype = s.toString()
+                try {
+                        val barcodeFormat = CatimaBarcode.fromPrettyName(bctype)
+                        viewModel.setBarcodeType(barcodeFormat)
                         generateBarcode()
-                    } else {
-                        try {
-                            val barcodeFormat = CatimaBarcode.fromPrettyName(s.toString())
-                            viewModel.setBarcodeType(barcodeFormat)
-                            generateBarcode()
-//should i move this earlier?
-                            if (!barcodeFormat.isSupported) {
-                                Toast.makeText(
-                                    this@LoyaltyCardEditActivity,
-                                    getString(R.string.unsupportedBarcodeType),
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        } catch (_: IllegalArgumentException) { }
+                } catch (_: IllegalArgumentException) {
+                        //viewModel.setBarcodeType(null)
+                        //generateBarcode()
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            getString(R.string.unsupportedBarcodeType),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
-                }
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -866,6 +820,61 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         failureReason?.let { resourceId ->
             Toast.makeText(this, resourceId, Toast.LENGTH_LONG).show()
         }
+    }
+
+    // --- Barcode ID Field Handlers ---
+
+    private fun onSyncWithCardIdSelected() {
+        viewModel.tempStoredOldBarcodeValue = null
+        viewModel.setBarcodeId(null)
+        generateBarcode()
+    }
+
+    private fun onSetCustomBarcodeSelected(previousValue: CharSequence?) {
+        // Restore previous value - "Set barcode ID..." is an action, not a value to display
+        if (previousValue?.toString() != getString(R.string.setBarcodeId)) {
+            binding.barcodeIdField.setText(previousValue)
+        }
+        showCustomBarcodeDialog()
+    }
+
+    private fun onBarcodeValueSet(barcodeId: String) {
+        viewModel.setBarcodeId(barcodeId)
+        generateBarcode()
+    }
+
+    private fun showCustomBarcodeDialog() {
+        val contentPadding = resources.getDimensionPixelSize(R.dimen.alert_dialog_content_padding)
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                leftMargin = contentPadding
+                topMargin = contentPadding / 2
+                rightMargin = contentPadding
+            }
+            viewModel.loyaltyCard.barcodeId?.let { setText(it) }
+        }
+
+        val container = FrameLayout(this).apply { addView(input) }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.setBarcodeId)
+            .setView(container)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                viewModel.tempStoredOldBarcodeValue = null
+                binding.barcodeIdField.setText(input.text)
+            }
+            .setNegativeButton(R.string.cancel) { dialog, _ -> dialog.cancel() }
+            .create()
+            .apply {
+                show()
+                window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+            }
+
+        input.requestFocus()
     }
 
     private fun askBarcodeChange(callback: Runnable?) {
