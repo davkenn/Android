@@ -990,7 +990,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             val currentImage = viewModel.getImage(operation.locationType)
-            val targetView = when (operation) {
+            val targetView =
+                when (operation) {
                 ImageOperation.FRONT -> binding.frontImage
                 ImageOperation.BACK -> binding.backImage
                 ImageOperation.ICON -> binding.thumbnail

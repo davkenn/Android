@@ -149,12 +149,12 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
+        if (onResuming || onRestoring) return
+
         val state = _cardState.value
         if (state is CardLoadState.Success) {
             state.loyaltyCard.block()
-            if (!onResuming && !onRestoring) {
-                hasChanged = true
-            }
+            hasChanged = true
         }
     }
 
