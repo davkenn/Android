@@ -399,7 +399,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             if (result.resultCode == UCrop.RESULT_ERROR) {
                 val e = UCrop.getError(intent) ?:
-                throw RuntimeException("ucrop returned error state but not an error!")
+                    throw RuntimeException("ucrop returned error state but not an error!")
                 Log.e("cropper error", e.toString())
             }
             else if (result.resultCode == RESULT_OK) {
@@ -498,6 +498,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
+    private fun showErrorToast(@StringRes messageRes: Int, logMessage: String? = null, exception: Exception? = null) {
+        Toast.makeText(this, messageRes, Toast.LENGTH_LONG).show()
+        logMessage?.let { Log.e(TAG, it, exception) }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cleanUpTempImages()
@@ -548,8 +553,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
     private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
-
-    private fun requestedIcon(): Boolean = getCurrentImageOperation() == ImageOperation.ICON
 
     private fun bindCardToUi(data: CardLoadState.Success) {
         viewModel.onResuming = true
@@ -693,7 +696,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     fun setCardImage(imageop: ImageOperation, bitmap: Bitmap?) {
         viewModel.setCardImage(imageop.locationType, bitmap, null)
 
-        // Icon needs additional header color processing
         if (imageop == ImageOperation.ICON) {
             setThumbnailImage(bitmap)
         }
@@ -792,7 +794,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun onSetCustomBarcodeSelected(previousValue: CharSequence?) {
-        // Restore previous value - "Set barcode ID..." is an action, not a value to display
         if (previousValue?.toString() != getString(R.string.setBarcodeId)) {
             binding.barcodeIdField.setText(previousValue)
         }
@@ -899,54 +900,39 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         try {
             mPhotoTakerLauncher.launch(photoURI)
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(
-                applicationContext,
-                R.string.cameraPermissionDeniedTitle,
-                Toast.LENGTH_LONG
-            ).show()
-            Log.e(TAG, "No activity found to handle intent", e)
+            showErrorToast(R.string.cameraPermissionDeniedTitle, "No activity found to handle intent", e)
         }
     }
 
     private fun selectImageFromGallery() {
+        val photoPickerIntent = Intent(Intent.ACTION_PICK).apply {type = "image/*"}
+        val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply{type = "image/*"}
 
-        val photoPickerIntent = Intent(Intent.ACTION_PICK)
-        photoPickerIntent.type = "image/*"
-        val contentIntent = Intent(Intent.ACTION_GET_CONTENT)
-        contentIntent.type = "image/*"
         val chooserIntent = Intent.createChooser(photoPickerIntent, getString(R.string.addFromImage))
         chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(contentIntent))
 
         try {
             mPhotoPickerLauncher.launch(chooserIntent)
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(
-                applicationContext,
-                R.string.failedLaunchingPhotoPicker,
-                Toast.LENGTH_LONG
-            ).show()
-            Log.e(TAG, "No activity found to handle intent", e)
+            showErrorToast(R.string.failedLaunchingPhotoPicker, "No activity found to handle intent", e)
         }
     }
 
     override fun onBarcodeImageWriterResult(success: Boolean) {
         if (!success) {
             binding.barcodeLayout.visibility = View.GONE
-            Toast.makeText(
-                this@LoyaltyCardEditActivity,
-                getString(R.string.wrongValueForBarcodeType),
-                Toast.LENGTH_LONG
-            ).show()
+            showErrorToast(R.string.wrongValueForBarcodeType)
         }
     }
 
     internal inner class EditCardIdAndBarcode : View.OnClickListener {
         override fun onClick(v: View?) {
             val i = Intent(applicationContext, ScanActivity::class.java)
-            val b = Bundle().apply {
-                putString(LoyaltyCard.BUNDLE_LOYALTY_CARD_CARD_ID, binding.cardIdView.text.toString())
-            }
-            i.putExtras(b)
+                .putExtras(
+                    Bundle().apply {
+                        putString(LoyaltyCard.BUNDLE_LOYALTY_CARD_CARD_ID, binding.cardIdView.text.toString())}
+                )
+
             mCardIdAndBarCodeEditorLauncher.launch(i)
         }
     }
@@ -1120,16 +1106,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private val defaultMinDateOfDatePicker: Long
         get() {
-            val minDateCalendar = Calendar.getInstance()
-            minDateCalendar.set(1970, 0, 1)
-            return minDateCalendar.timeInMillis
+            return Calendar.getInstance().apply { set(1970, 0, 1) }.timeInMillis
         }
 
     private val defaultMaxDateOfDatePicker: Long
         get() {
-            val maxDateCalendar = Calendar.getInstance()
-            maxDateCalendar.set(2100, 11, 31)
-            return maxDateCalendar.timeInMillis
+            return Calendar.getInstance().apply { set(2100, 11, 31) }.timeInMillis
         }
 
     private fun doSave() {
