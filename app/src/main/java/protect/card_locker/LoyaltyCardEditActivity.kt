@@ -1065,54 +1065,56 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .setCalendarConstraints(calendarConstraints)
             .build()
 
+        // Use field-specific key so result listener knows which field to update
+        val requestKey = when (loyaltyCardField) {
+            LoyaltyCardField.validFrom -> PICK_VALID_FROM_DATE_KEY
+            LoyaltyCardField.expiry -> PICK_EXPIRY_DATE_KEY
+            else -> throw IllegalArgumentException("Unexpected field: $loyaltyCardField")
+        }
+
         // Required to handle configuration changes
         // See https://github.com/material-components/material-components-android/issues/1688
-        viewModel.tempLoyaltyCardField = loyaltyCardField
-        supportFragmentManager.addFragmentOnAttachListener { _ , fragment: Fragment? ->
-            if (fragment is MaterialDatePicker<*> && fragment.tag == PICK_DATE_REQUEST_KEY) {
-                (fragment as MaterialDatePicker<Long>).addOnPositiveButtonClickListener(
-                    MaterialPickerOnPositiveButtonClickListener { selection: Long ->
-                        val args = Bundle()
-                        args.putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection)
-                        supportFragmentManager.setFragmentResult(PICK_DATE_REQUEST_KEY, args)
-                    })
+        supportFragmentManager.addFragmentOnAttachListener { _, fragment: Fragment? ->
+            if (fragment is MaterialDatePicker<*> &&
+                (fragment.tag == PICK_VALID_FROM_DATE_KEY || fragment.tag == PICK_EXPIRY_DATE_KEY)) {
+                val tag = fragment.tag!!
+                (fragment as MaterialDatePicker<Long>).addOnPositiveButtonClickListener { selection: Long ->
+                    supportFragmentManager.setFragmentResult(
+                        tag,
+                        Bundle().apply { putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection) }
+                    )
+                }
             }
         }
 
-        materialDatePicker.show(supportFragmentManager, PICK_DATE_REQUEST_KEY)
+        materialDatePicker.show(supportFragmentManager, requestKey)
     }
 
     // Required to handle configuration changes
     // See https://github.com/material-components/material-components-android/issues/1688
     private fun setMaterialDatePickerResultListener() {
-        val fragment =
-            supportFragmentManager.findFragmentByTag(PICK_DATE_REQUEST_KEY) as MaterialDatePicker<Long>?
-        fragment?.addOnPositiveButtonClickListener(MaterialPickerOnPositiveButtonClickListener {
-            selection: Long ->
-            supportFragmentManager.setFragmentResult(
-                PICK_DATE_REQUEST_KEY,
-                Bundle().apply{ putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection)}
-            )
-        })
+        // Re-attach listeners for any existing date picker fragments (after config change)
+        listOf(PICK_VALID_FROM_DATE_KEY, PICK_EXPIRY_DATE_KEY).forEach { key ->
+            (supportFragmentManager.findFragmentByTag(key) as? MaterialDatePicker<Long>)
+                ?.addOnPositiveButtonClickListener { selection: Long ->
+                    supportFragmentManager.setFragmentResult(
+                        key,
+                        Bundle().apply { putLong(NEWLY_PICKED_DATE_ARGUMENT_KEY, selection) }
+                    )
+                }
+        }
 
-        supportFragmentManager.setFragmentResultListener(PICK_DATE_REQUEST_KEY, this) {
-            requestKey: String, result: Bundle ->
-
+        // Each listener knows exactly which field to update - no ViewModel state needed
+        supportFragmentManager.setFragmentResultListener(PICK_VALID_FROM_DATE_KEY, this) { _, result ->
             val newDate = Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY))
-            val tempLoyaltyCardField = viewModel.tempLoyaltyCardField ?:
-                throw AssertionError("tempLoyaltyCardField is null unexpectedly!")
+            formatDateField(this, binding.validFromField, newDate)
+            viewModel.setValidFrom(newDate)
+        }
 
-            when (tempLoyaltyCardField) {
-                LoyaltyCardField.validFrom -> {
-                    formatDateField(this, binding.validFromField, newDate)
-                    viewModel.setValidFrom(newDate)
-                }
-                LoyaltyCardField.expiry -> {
-                    formatDateField(this@LoyaltyCardEditActivity, binding.expiryField, newDate)
-                    viewModel.setExpiry(newDate)
-                }
-                else -> throw AssertionError("Unexpected field: $tempLoyaltyCardField")
-            }
+        supportFragmentManager.setFragmentResultListener(PICK_EXPIRY_DATE_KEY, this) { _, result ->
+            val newDate = Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY))
+            formatDateField(this, binding.expiryField, newDate)
+            viewModel.setExpiry(newDate)
         }
     }
 
@@ -1405,8 +1407,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
         private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
         private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
-        // Date picker keys
-        private const val PICK_DATE_REQUEST_KEY = "pick_date_request"
+        // Date picker keys - separate keys per field to avoid ViewModel state
+        private const val PICK_VALID_FROM_DATE_KEY = "pick_valid_from_date"
+        private const val PICK_EXPIRY_DATE_KEY = "pick_expiry_date"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
         // Permission request codes
         private const val PERMISSION_REQUEST_CAMERA = 100

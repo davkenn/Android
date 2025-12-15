@@ -20,7 +20,6 @@ import protect.card_locker.CardRepository
 import protect.card_locker.CatimaBarcode
 import protect.card_locker.Group
 import protect.card_locker.LoyaltyCard
-import protect.card_locker.LoyaltyCardField
 import protect.card_locker.async.TaskHandler
 import protect.card_locker.async.runSuspending
 import java.math.BigDecimal
@@ -112,9 +111,8 @@ class LoyaltyCardEditActivityViewModel(
 
     var tabIndex: Int = 0
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
-    var tempLoyaltyCardField: LoyaltyCardField? = null
 
-     var loyaltyCard: LoyaltyCard
+    var loyaltyCard: LoyaltyCard
         get() = (_cardState.value as? CardLoadState.Success)?.loyaltyCard ?: LoyaltyCard()
         private set(value) {
             val currentState = _cardState.value
