@@ -68,6 +68,10 @@ class LoyaltyCardEditActivityViewModel(
     private val _uiEvents = MutableSharedFlow<UiEvent>(replay = 0)
     val uiEvents = _uiEvents.asSharedFlow()
 
+    // Display images cached separately from LoyaltyCard to avoid defensive copy overhead
+    private val _displayImages = MutableStateFlow<Map<ImageLocationType, Bitmap?>>(emptyMap())
+    val displayImages = _displayImages.asStateFlow()
+
     var tempStoredOldBarcodeValue: String? = null
 
     var initDone = false
@@ -137,6 +141,12 @@ class LoyaltyCardEditActivityViewModel(
                         allGroups = data.allGroups,
                         loyaltyCardGroups = data.loyaltyCardGroups
                     )
+                    // Populate display images cache from loaded card (one-time copy on load)
+                    _displayImages.value = mapOf(
+                        ImageLocationType.icon to data.loyaltyCard.getImageThumbnail(application),
+                        ImageLocationType.front to data.loyaltyCard.getImageFront(application),
+                        ImageLocationType.back to data.loyaltyCard.getImageBack(application)
+                    )
                 },
                 onFailure = { exception ->
                     val message = exception.message ?: "An unknown error occurred while loading card data."
@@ -177,16 +187,23 @@ class LoyaltyCardEditActivityViewModel(
     fun setBarcodeType(barcodeType: CatimaBarcode?) = modifyCard { setBarcodeType(barcodeType) }
     fun setHeaderColor(headerColor: Int?) = modifyCard { setHeaderColor(headerColor) }
 
-    fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) = modifyCard {
-        when (imageLocationType) {
-            ImageLocationType.icon -> setImageThumbnail(bitmap, path)
-            ImageLocationType.front -> setImageFront(bitmap, path)
-            ImageLocationType.back -> setImageBack(bitmap, path)
+    fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
+        // Cache original reference for display (no copy)
+        _displayImages.value = _displayImages.value + (imageLocationType to bitmap)
+
+        // Store in LoyaltyCard for persistence (it will copy defensively)
+        modifyCard {
+            when (imageLocationType) {
+                ImageLocationType.icon -> setImageThumbnail(bitmap, path)
+                ImageLocationType.front -> setImageFront(bitmap, path)
+                ImageLocationType.back -> setImageBack(bitmap, path)
+            }
         }
     }
 
     fun getImage(imageLocationType: ImageLocationType): Bitmap? =
-        loyaltyCard.getImageForImageLocationType(application, imageLocationType)
+        _displayImages.value[imageLocationType]
+            ?: loyaltyCard.getImageForImageLocationType(application, imageLocationType)
 
     fun saveCard(selectedGroups: List<Group>) {
         if (_saveState.value is SaveState.Saving) return

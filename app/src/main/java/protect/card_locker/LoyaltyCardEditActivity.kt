@@ -30,7 +30,6 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResult
@@ -417,7 +416,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         } else {
                             Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
                         }
-                        setCardImage(op, resized, op != ImageOperation.ICON)
+                        setCardImage(op, resized)
                     }
                     Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
@@ -475,6 +474,16 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         finish()
                     }
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.displayImages.collectLatest { images ->
+                images[ImageLocationType.front]?.let { binding.frontImage.setImageBitmap(it) }
+                    ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
+                images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
+                    ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
+                images[ImageLocationType.icon]?.let { binding.thumbnail.setImageBitmap(it) }
             }
         }
 
@@ -539,10 +548,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
     private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
-
-    private fun requestedFrontImage(): Boolean = getCurrentImageOperation() == ImageOperation.FRONT
-
-    private fun requestedBackImage(): Boolean = getCurrentImageOperation() == ImageOperation.BACK
 
     private fun requestedIcon(): Boolean = getCurrentImageOperation() == ImageOperation.ICON
 
@@ -610,21 +615,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.setHeaderColor(color)
         }
 
-        setCardImage(
-            ImageOperation.FRONT,
-            viewModel.getImage(ImageLocationType.front),
-            true
-        )
-        setCardImage(
-            ImageOperation.BACK,
-            viewModel.getImage(ImageLocationType.back),
-            true
-        )
-        setCardImage(
-            ImageOperation.ICON,
-            viewModel.getImage(ImageLocationType.icon),
-            false
-        )
+        // Observer handles ImageView updates from displayImages
+        // But we need header color processing for the icon
+        setThumbnailImage(viewModel.getImage(ImageLocationType.icon))
 
 
         if (!viewModel.initDone) {
@@ -697,20 +690,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    fun setCardImage(
-        imageop: ImageOperation,
-        bitmap: Bitmap?,
-        applyFallback: Boolean
-    ) {
+    fun setCardImage(imageop: ImageOperation, bitmap: Bitmap?) {
         viewModel.setCardImage(imageop.locationType, bitmap, null)
 
-        val targetView = findViewById<ImageView>(imageop.resourceId)
-
-        bitmap?.let { targetView.setImageBitmap(it) } ?: run {
-            if (applyFallback) {
-                targetView.setImageResource(R.drawable.ic_camera_white)
-            }
-        }
+        // Icon needs additional header color processing
         if (imageop == ImageOperation.ICON) {
             setThumbnailImage(bitmap)
         }
@@ -984,7 +967,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             if (currentImage != null && operation != ImageOperation.ICON) {
                 cardOptions[getString(R.string.removeImage)] = {
-                    setCardImage(operation, null, true)
+                    setCardImage(operation, null)
                 }
             }
 
@@ -1000,16 +983,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 viewModel.getImage(ImageLocationType.front)?.let {
                     cardOptions[getString(R.string.useFrontImage)] = {
-                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()), false)
-
+                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()))
                     }
                 }
 
                 viewModel.getImage(ImageLocationType.back)?.let {
                     cardOptions[getString(R.string.useBackImage)] = {
-                        setCardImage(ImageOperation.ICON,
-                            Utils.resizeBitmap(it,
-                                Utils.BITMAP_SIZE_SMALL.toDouble()), false)
+                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()))
                     }
                 }
             }
