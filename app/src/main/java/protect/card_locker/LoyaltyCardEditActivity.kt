@@ -785,8 +785,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    // --- Barcode ID Field Handlers ---
-
     private fun onSyncWithCardIdSelected() {
         viewModel.tempStoredOldBarcodeValue = null
         viewModel.setBarcodeId(null)
@@ -1070,7 +1068,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // Required to handle configuration changes
         // See https://github.com/material-components/material-components-android/issues/1688
         viewModel.tempLoyaltyCardField = loyaltyCardField
-        supportFragmentManager.addFragmentOnAttachListener { fragmentManager: FragmentManager?, fragment: Fragment? ->
+        supportFragmentManager.addFragmentOnAttachListener { _ , fragment: Fragment? ->
             if (fragment is MaterialDatePicker<*> && fragment.tag == PICK_DATE_REQUEST_KEY) {
                 (fragment as MaterialDatePicker<Long>).addOnPositiveButtonClickListener(
                     MaterialPickerOnPositiveButtonClickListener { selection: Long ->
@@ -1208,7 +1206,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             return
         }
 
-        if (requestedIcon()) {
+        if (currentOperation== ImageOperation.ICON) {
             setCropperOptions(true, 0f, 0f)
         } else {
             // sniff the input image for width and height to work around a ucrop bug
