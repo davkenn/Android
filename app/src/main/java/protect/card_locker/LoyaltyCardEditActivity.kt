@@ -414,7 +414,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble())
                     } else Utils.resizeBitmap(it, Utils.BITMAP_SIZE_BIG.toDouble())
 
-                    setCardImage(getCurrentImageOperation(), it, true)
+                    setCardImage(getCurrentImageOperation(), it, if (getCurrentImageOperation()== ImageOperation.ICON) false else true)
                     //inside or outside let block?
                     Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
@@ -986,12 +986,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             val currentImage = viewModel.getImage(operation.locationType)
-            val targetView =
-                when (operation) {
-                ImageOperation.FRONT -> binding.frontImage
-                ImageOperation.BACK -> binding.backImage
-                ImageOperation.ICON -> binding.thumbnail
-            }
 
             val cardOptions = linkedMapOf<String, () -> Unit>()
 
@@ -1020,7 +1014,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 viewModel.getImage(ImageLocationType.back)?.let {
                     cardOptions[getString(R.string.useBackImage)] = {
-                        setCardImage(ImageOperation.ICON, Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble()), false)
+                        setCardImage(ImageOperation.ICON,
+                            Utils.resizeBitmap(it,
+                                Utils.BITMAP_SIZE_SMALL.toDouble()), false)
                     }
                 }
             }
@@ -1054,7 +1050,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 .show()
         }
     }
-
     // ColorPickerDialogListener callback used by the ColorPickerDialog created in ChooseCardImage to set the thumbnail color
     // We don't need to set or check the dialogId since it's only used for that single dialog
     override fun onColorSelected(dialogId: Int, color: Int) {
