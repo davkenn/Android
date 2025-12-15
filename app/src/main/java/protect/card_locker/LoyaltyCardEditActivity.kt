@@ -74,15 +74,18 @@ import java.util.Currency
 import java.util.Date
 import java.util.Locale
 import androidx.core.net.toUri
+import androidx.core.view.allViews
 import androidx.core.view.size
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
 import protect.card_locker.viewmodels.UiEvent
+import android.graphics.PorterDuff
 import java.io.File
 
 class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterResultCallback, ColorPickerDialogListener {
@@ -472,6 +475,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
+        // Observe barcode state - ViewModel generates bitmap, Activity just renders
+        lifecycleScope.launch {
+            viewModel.barcodeState.collectLatest { state ->
+                bindBarcodeToUi(state)
+            }
+        }
+
     }
 
     private fun updateEditText(editText: EditText, newValue: String?) {
@@ -618,7 +628,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.initDone = true
         }
 
-        generateBarcode(data.loyaltyCard.cardId, data.loyaltyCard.barcodeId, data.loyaltyCard.barcodeType)
+        generateBarcode()
         generateIcon(binding.storeNameEdit.text.toString().trim(), data.loyaltyCard.headerColor)
 
         data.loyaltyCard.headerColor?.let { color ->
@@ -1239,58 +1249,60 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val ucropIntent = UCrop.of(sourceUri, destUri).withOptions(mCropperOptions).getIntent(this)
             .apply { setClass(this@LoyaltyCardEditActivity, UCropWrapper::class.java) }
 
-        for (i in 0..<binding.toolbar.size) {
             // send toolbar font details to ucrop wrapper
-            val childTextView = binding.toolbar.getChildAt(i)
-            if (childTextView is AppCompatTextView) {
-                ucropIntent.putExtra(
-                    UCropWrapper.UCROP_TOOLBAR_TYPEFACE_STYLE,
-                    childTextView.typeface.style
-                )
-                break
-            }
+        val childTextView = binding.toolbar.allViews.filterIsInstance<AppCompatTextView>().firstOrNull()
+        childTextView ?. let {
+            ucropIntent.putExtra(UCropWrapper.UCROP_TOOLBAR_TYPEFACE_STYLE,childTextView.typeface.style)
         }
+
         mCropperLauncher.launch(ucropIntent)
     }
 
-    private fun generateBarcode(cardId: String?, barcodeId: String?, barcodeType: CatimaBarcode?) {
-        val cardIdString = barcodeId ?: cardId
-
-        if (cardIdString.isNullOrEmpty() || barcodeType == null) {
-            binding.barcodeLayout.visibility = View.GONE
-            return
-        }
-
-        binding.barcodeLayout.visibility = View.VISIBLE
-
-        fun createBarcodeWriter() = BarcodeImageWriterTask(
-            applicationContext,
-            binding.barcode,
-            cardIdString,
-            barcodeType,
-            null,
-            false,
-            this@LoyaltyCardEditActivity,
-            true,
-            false
-        )
-
+    /**
+     * Triggers barcode generation in ViewModel. Result comes back via barcodeState StateFlow.
+     */
+    private fun generateBarcode() {
         if (binding.barcode.height == 0) {
-            Log.d(TAG, "ImageView size is not known known at start, waiting for load")
-            // The size of the ImageView is not yet available as it has not
-            // yet been drawn. Wait for it to be drawn so the size is available.
+            // Wait for layout to get dimensions
             binding.barcode.viewTreeObserver.addOnGlobalLayoutListener(
                 object : OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
                         binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                        Log.d(TAG, "ImageView size now known")
-                        viewModel.executeTask(TaskHandler.TYPE.BARCODE, createBarcodeWriter())
+                        viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
                     }
                 }
             )
         } else {
-            Log.d(TAG, "ImageView size known known, creating barcode")
-            viewModel.executeTask(TaskHandler.TYPE.BARCODE, createBarcodeWriter())
+            viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
+        }
+    }
+
+    /**
+     * Renders barcode state to UI. Called when barcodeState StateFlow emits.
+     */
+    private fun bindBarcodeToUi(state: BarcodeState) {
+        when (state) {
+            is BarcodeState.None -> {
+                binding.barcodeLayout.visibility = View.GONE
+            }
+            is BarcodeState.Generated -> {
+                binding.barcodeLayout.visibility = View.VISIBLE
+                binding.barcode.setImageBitmap(state.bitmap)
+                binding.barcode.contentDescription = getString(
+                    R.string.barcodeImageDescriptionWithType,
+                    state.format.prettyName()
+                )
+                // Gray out invalid (fallback) barcodes
+                if (state.isValid) {
+                    binding.barcode.colorFilter = null
+                } else {
+                    binding.barcode.setColorFilter(Color.LTGRAY, PorterDuff.Mode.LIGHTEN)
+                }
+            }
+            is BarcodeState.Error -> {
+                binding.barcodeLayout.visibility = View.GONE
+                Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -1319,7 +1331,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 optionsPart.visibility = View.GONE
                 picturesPart.visibility = View.GONE
                 // Redraw barcode due to size change (Visibility.GONE sets it to 0)
-                generateBarcode(viewModel.loyaltyCard.cardId, viewModel.loyaltyCard.barcodeId, viewModel.loyaltyCard.barcodeType)
+                generateBarcode()
             }
             getString(R.string.options) -> {
                 cardPart.visibility = View.GONE

@@ -5,42 +5,32 @@ import android.os.Bundle
 import android.os.Looper
 import android.view.View
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
-import com.google.zxing.BarcodeFormat
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.MockitoAnnotations
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowLog
 import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_OPEN_SET_ICON_MENU
 import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_UPDATE
 import protect.card_locker.LoyaltyCardViewActivity.BUNDLE_ID
-import protect.card_locker.async.TaskHandler
+import protect.card_locker.viewmodels.BarcodeState
 
 @RunWith(RobolectricTestRunner::class)
 class LoyaltyCardEditActivityTest {
-    @Mock
-    private lateinit var mockTextView: TextView
-    @Mock
-    private lateinit var mockImageView: ImageView
     private lateinit var context: android.content.Context
 
     @Before
     fun setUp() {
         ShadowLog.stream = System.out
-        MockitoAnnotations.openMocks(this)
         context = ApplicationProvider.getApplicationContext()
     }
 
@@ -123,29 +113,11 @@ class LoyaltyCardEditActivityTest {
     }
 
     @Test
-    fun testBarcodeGenerationCancellation() {
+    fun testBarcodeStateInitiallyNone() {
         launchActivity().use { scenario ->
             scenario.onActivity { activity ->
-                // Test that barcode generation can be cancelled without throwing
-                activity.viewModel.cancelBarcodeGeneration()
-                assertTrue(true)
-            }
-        }
-    }
-
-    @Test
-    fun testBarcodeGeneration() {
-        launchActivity().use { scenario ->
-            scenario.onActivity { activity ->
-                val fakeTask = FakeBarcodeImageWriterTask(
-                    context, mockImageView, "12345", CatimaBarcode.fromBarcode(BarcodeFormat.CODE_128),
-                    mockTextView, false, null, false, false
-                )
-                assertFalse(fakeTask.wasExecuted)
-                activity.viewModel.executeTask(TaskHandler.TYPE.BARCODE, fakeTask)
-                shadowOf(Looper.getMainLooper()).idle()
-                shadowOf(Looper.getMainLooper()).runToEndOfTasks()
-                assertTrue(fakeTask.wasExecuted)
+                // Barcode state should be None initially
+                assertEquals(BarcodeState.None, activity.viewModel.barcodeState.value)
             }
         }
     }

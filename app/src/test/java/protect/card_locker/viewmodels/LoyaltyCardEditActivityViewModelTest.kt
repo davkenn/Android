@@ -21,6 +21,7 @@ import org.robolectric.shadows.ShadowLog
 import protect.card_locker.CardRepository
 import protect.card_locker.LoadedCardData
 import protect.card_locker.LoyaltyCard
+import protect.card_locker.viewmodels.BarcodeState
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -102,9 +103,8 @@ class LoyaltyCardEditActivityViewModelTest {
     }
 
     @Test
-    fun testBarcodeGenerationCancellation() {
-        viewModel.cancelBarcodeGeneration()
-        assertTrue(true)
+    fun testBarcodeStateInitiallyNone() {
+        assertEquals(BarcodeState.None, viewModel.barcodeState.value)
     }
 
     @Test
