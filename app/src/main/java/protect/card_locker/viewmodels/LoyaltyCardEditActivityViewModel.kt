@@ -108,7 +108,6 @@ class LoyaltyCardEditActivityViewModel(
     var duplicateFromLoyaltyCardId: Boolean = false
     var importLoyaltyCardUri: Uri? = null
     var loyaltyCardId: Int = 0
-
     var tabIndex: Int = 0
     var currentImageOperation: protect.card_locker.LoyaltyCardEditActivity.ImageOperation? = null
 

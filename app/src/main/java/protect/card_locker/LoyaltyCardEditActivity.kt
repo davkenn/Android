@@ -189,7 +189,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         setMaterialDatePickerResultListener()
 
-        binding.balanceField.setOnFocusChangeListener { v: View?, hasFocus: Boolean ->
+        binding.balanceField.setOnFocusChangeListener { _, hasFocus: Boolean ->
             if (!hasFocus && !viewModel.onResuming && !viewModel.onRestoring) {
                 if (binding.balanceField.text.toString().isEmpty()) {
                     viewModel.setBalance(BigDecimal.valueOf(0))
@@ -1247,15 +1247,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
         }
-        val ucropIntent = UCrop.of(sourceUri, destUri)
-            .withOptions(mCropperOptions)
-            .getIntent(this)
-        ucropIntent.setClass(this, UCropWrapper::class.java)
+        val ucropIntent = UCrop.of(sourceUri, destUri).withOptions(mCropperOptions).getIntent(this)
+            .apply { setClass(this@LoyaltyCardEditActivity, UCropWrapper::class.java) }
+
         for (i in 0..<binding.toolbar.size) {
             // send toolbar font details to ucrop wrapper
-            val child = binding.toolbar.getChildAt(i)
-            if (child is AppCompatTextView) {
-                val childTextView = child
+            val childTextView = binding.toolbar.getChildAt(i)
+            if (childTextView is AppCompatTextView) {
                 ucropIntent.putExtra(
                     UCropWrapper.UCROP_TOOLBAR_TYPEFACE_STYLE,
                     childTextView.typeface.style
