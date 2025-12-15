@@ -38,7 +38,8 @@ sealed interface CardLoadState {
     data class Success(
         var loyaltyCard: LoyaltyCard,
         val allGroups: List<Group>,
-        val loyaltyCardGroups: List<Group>
+        val loyaltyCardGroups: List<Group>,
+        val version: Long = 0
     ) : CardLoadState
 }
 
@@ -162,6 +163,7 @@ class LoyaltyCardEditActivityViewModel(
         if (state is CardLoadState.Success) {
             state.loyaltyCard.block()
             hasChanged = true
+            _cardState.value = state.copy(version = System.currentTimeMillis())
         }
     }
 
@@ -170,10 +172,10 @@ class LoyaltyCardEditActivityViewModel(
     fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
 
     fun onCardIdChanged(newCardId: String) = modifyCard {
-        cardId = newCardId
-        if (barcodeId == null || barcodeId == cardId) {
+        if (barcodeId != null && barcodeId == cardId) {
             barcodeId = newCardId
         }
+        cardId = newCardId
     }
 
     fun setValidFrom(validFrom: Date?) = modifyCard { setValidFrom(validFrom) }
@@ -183,6 +185,10 @@ class LoyaltyCardEditActivityViewModel(
     fun setBarcodeId(barcodeId: String?) = modifyCard { setBarcodeId(barcodeId) }
     fun setBarcodeType(barcodeType: CatimaBarcode?) = modifyCard { setBarcodeType(barcodeType) }
     fun setHeaderColor(headerColor: Int?) = modifyCard { setHeaderColor(headerColor) }
+    
+    fun updateCardFromBundle(bundle: android.os.Bundle) = modifyCard {
+        updateFromBundle(bundle, false)
+    }
 
     fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
         // Cache original reference for display (no copy)
