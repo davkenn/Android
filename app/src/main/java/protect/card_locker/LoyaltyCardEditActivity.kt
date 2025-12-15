@@ -30,6 +30,7 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResult
@@ -409,33 +410,24 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
                 Log.d("cropper", "ucrop produced image at $debugUri")
                 val bitmap = BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
-                bitmap?.let {
-                    val it = if (getCurrentImageOperation() == ImageOperation.ICON) {
-                        Utils.resizeBitmap(it, Utils.BITMAP_SIZE_SMALL.toDouble())
-                    } else Utils.resizeBitmap(it, Utils.BITMAP_SIZE_BIG.toDouble())
-
-                    setCardImage(getCurrentImageOperation(), it, if (getCurrentImageOperation()== ImageOperation.ICON) false else true)
-                    //inside or outside let block?
+                bitmap?.let { bmp ->
+                    getCurrentImageOperation()?.let { op ->
+                        val resized = if (op == ImageOperation.ICON) {
+                            Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_SMALL.toDouble())
+                        } else {
+                            Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
+                        }
+                        setCardImage(op, resized, op != ImageOperation.ICON)
+                    }
                     Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
-                }
-
-                        //WHY NOT PASSING THE VIEW IN HERE?
-                //        requestedIcon() -> setThumbnailImage(
-                  //          Utils.resizeBitmap(
-                      //          bitmap,
-                    //            Utils.BITMAP_SIZE_SMALL.toDouble()
-                 //           )
-
-
-              ?:
-                    Toast.makeText(
-                        this@LoyaltyCardEditActivity,
-                        R.string.errorReadingImage,
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                } ?: Toast.makeText(
+                    this@LoyaltyCardEditActivity,
+                    R.string.errorReadingImage,
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        }
 
 
         mCropperOptions = UCrop.Options()
@@ -706,16 +698,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     fun setCardImage(
-        imageop: ImageOperation?,
+        imageop: ImageOperation,
         bitmap: Bitmap?,
         applyFallback: Boolean
     ) {
-        if (imageop == null) return
         viewModel.setCardImage(imageop.locationType, bitmap, null)
 
-        bitmap?.let { binding.frontImage.setImageBitmap(it) } ?: run {
+        val targetView = findViewById<ImageView>(imageop.resourceId)
+
+        bitmap?.let { targetView.setImageBitmap(it) } ?: run {
             if (applyFallback) {
-                binding.frontImage.setImageResource(R.drawable.ic_camera_white)
+                targetView.setImageResource(R.drawable.ic_camera_white)
             }
         }
         if (imageop == ImageOperation.ICON) {
