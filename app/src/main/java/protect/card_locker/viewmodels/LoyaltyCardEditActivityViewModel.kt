@@ -33,6 +33,10 @@ sealed interface SaveState {
     object Saving : SaveState
 }
 
+enum class EditTab {
+    CARD, OPTIONS, PHOTOS
+}
+
 sealed interface CardLoadState {
     object Loading : CardLoadState
     data class Success(
@@ -42,6 +46,7 @@ sealed interface CardLoadState {
         val images: Map<ImageLocationType, Bitmap?> = emptyMap(),
         val barcodeState: BarcodeState = BarcodeState.None,
         val thumbnailState: ThumbnailState = ThumbnailState.None,
+        val currentTab: EditTab = EditTab.CARD,
         val version: Long = 0
     ) : CardLoadState
 }
@@ -313,7 +318,8 @@ class LoyaltyCardEditActivityViewModel(
                             ImageLocationType.front to data.loyaltyCard.getImageFront(application),
                             ImageLocationType.back to data.loyaltyCard.getImageBack(application)
                         ),
-                        thumbnailState = thumbnailState
+                        thumbnailState = thumbnailState,
+                        currentTab = EditTab.entries.getOrElse(tabIndex) { EditTab.CARD }
                     )
                 },
                 onFailure = { exception ->
@@ -334,6 +340,15 @@ class LoyaltyCardEditActivityViewModel(
             state.loyaltyCard.block()
             hasChanged = true
             _cardState.value = state.copy(version = System.currentTimeMillis())
+        }
+    }
+
+    fun selectTab(index: Int) {
+        tabIndex = index
+        val tab = EditTab.entries.getOrElse(index) { EditTab.CARD }
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            _cardState.value = state.copy(currentTab = tab)
         }
     }
 

@@ -77,6 +77,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
+import protect.card_locker.viewmodels.EditTab
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
 import protect.card_locker.viewmodels.ThumbnailState
@@ -317,19 +318,23 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.tabs.addOnTabSelectedListener(object : OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                viewModel.tabIndex = tab.position
-                showPart(tab.text.toString())
+                viewModel.tempStoredOldBarcodeValue?.let {
+                    askBarcodeChange { viewModel.selectTab(tab.position) }
+                    return
+                }
+                viewModel.selectTab(tab.position)
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) { }
 
             override fun onTabReselected(tab: TabLayout.Tab) {
-                viewModel.tabIndex = tab.position
-                showPart(tab.text.toString())
+                viewModel.tempStoredOldBarcodeValue?.let {
+                    askBarcodeChange { viewModel.selectTab(tab.position) }
+                    return
+                }
+                viewModel.selectTab(tab.position)
             }
         })
-
-        selectTab(viewModel.tabIndex)
 
         mPhotoTakerLauncher = registerForActivityResult(TakePicture()) {
             result: Boolean ->
@@ -489,11 +494,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         cleanUpTempImages()
     }
 
-    private fun selectTab(index: Int) {
-        binding.tabs.selectTab(binding.tabs.getTabAt(index))
-        viewModel.tabIndex = index
-    }
-
     // ucrop 2.2.6 initial aspect ratio is glitched when 0x0 is used as the initial ratio option
     // https://github.com/Yalantis/uCrop/blob/281c8e6438d81f464d836fc6b500517144af264a/ucrop/src/main/java/com/yalantis/ucrop/UCropActivity.java#L264
     // so source width height has to be provided for now, depending on whether future versions of ucrop will support 0x0 as the default option
@@ -599,6 +599,19 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // Bind computed states - ViewModel owns logic, Activity just renders
         bindBarcodeToUi(data.barcodeState)
         bindThumbnailToUi(data.thumbnailState)
+
+        // Bind Tab State
+        val currentTabIndex = data.currentTab.ordinal
+        if (binding.tabs.selectedTabPosition != currentTabIndex) {
+            binding.tabs.getTabAt(currentTabIndex)?.select()
+        }
+        binding.cardPart.visibility = if (data.currentTab == EditTab.CARD) View.VISIBLE else View.GONE
+        binding.optionsPart.visibility = if (data.currentTab == EditTab.OPTIONS) View.VISIBLE else View.GONE
+        binding.picturesPart.visibility = if (data.currentTab == EditTab.PHOTOS) View.VISIBLE else View.GONE
+
+        if (data.currentTab == EditTab.CARD) {
+            generateBarcode()
+        }
 
         viewModel.onResuming = false
         viewModel.onRestoring = false
@@ -1051,7 +1064,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         var hasError = false
         if (binding.storeNameEdit.text.toString().trim().isEmpty()) {
             binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
-            selectTab(0) // Helper function to switch to the correct tab
+            viewModel.selectTab(0) // Helper function to switch to the correct tab
             binding.storeNameEdit.requestFocus()
             hasError = true
         }
@@ -1059,7 +1072,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (binding.cardIdView.text.toString().isEmpty()) {
             binding.cardIdView.error = getString(R.string.field_must_not_be_empty)
             if (!hasError) {
-                selectTab(0)
+                viewModel.selectTab(0)
                 binding.cardIdView.requestFocus()
                 hasError = true
             }
@@ -1068,7 +1081,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (!validBalance) {
             binding.balanceField.error = getString(R.string.balanceParsingFailed)
             if (!hasError) {
-                selectTab(1)
+                viewModel.selectTab(1)
                 binding.balanceField.requestFocus()
                 hasError = true
             }
@@ -1247,40 +1260,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         // Ensure minimum width matches height for square aspect
         binding.thumbnail.minimumWidth = binding.thumbnail.height
-    }
-
-    private fun showPart(part: String?) {
-        viewModel.tempStoredOldBarcodeValue?.let {
-            askBarcodeChange{ showPart(part) }
-            return
-        }
-
-        val cardPart: View = binding.cardPart
-        val optionsPart: View = binding.optionsPart
-        val picturesPart: View = binding.picturesPart
-
-        when (part) {
-            getString(R.string.card) -> {
-                cardPart.visibility = View.VISIBLE
-                optionsPart.visibility = View.GONE
-                picturesPart.visibility = View.GONE
-                // Redraw barcode due to size change (Visibility.GONE sets it to 0)
-                generateBarcode()
-            }
-            getString(R.string.options) -> {
-                cardPart.visibility = View.GONE
-                optionsPart.visibility = View.VISIBLE
-                picturesPart.visibility = View.GONE
-            }
-            getString(R.string.photos) -> {
-                cardPart.visibility = View.GONE
-                optionsPart.visibility = View.GONE
-                picturesPart.visibility = View.VISIBLE
-            }
-            else -> {
-                throw UnsupportedOperationException()
-            }
-        }
     }
 
     private fun currencyPrioritizeLocaleSymbols(currencyList: ArrayList<String>, locale: Locale?) {
