@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import protect.card_locker.BarcodeGenerator
 import protect.card_locker.CardRepository
 import protect.card_locker.CatimaBarcode
 import protect.card_locker.Group
@@ -24,8 +25,6 @@ import java.util.Currency
 import java.util.Date
 import protect.card_locker.ImageLocationType
 import android.graphics.Bitmap
-import com.google.zxing.MultiFormatWriter
-import com.google.zxing.WriterException
 import kotlinx.coroutines.withContext
 
 sealed interface SaveState {
@@ -55,6 +54,8 @@ sealed interface UiEvent {
 /**
  * Barcode display state - follows same pattern as displayImages StateFlow.
  * Keeps barcode bitmap in ViewModel so Activity just observes and renders.
+ *
+ * Includes padding information from BarcodeGenerator to match BarcodeImageWriterTask behavior.
  */
 sealed interface BarcodeState {
     /** No barcode (empty card ID or no barcode type selected) */
@@ -64,7 +65,9 @@ sealed interface BarcodeState {
     data class Generated(
         val bitmap: Bitmap,
         val format: CatimaBarcode,
-        val isValid: Boolean = true  // false when showing fallback barcode
+        val isValid: Boolean = true,  // false when showing fallback barcode
+        val imagePadding: Int = 0,
+        val widthPadding: Boolean = false
     ) : BarcodeState
 
     /** Barcode generation failed */
@@ -116,10 +119,13 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     /**
-     * Generate barcode and store in unified cardState.
+     * Generate barcode using BarcodeGenerator and store in unified cardState.
      * Activity observes cardState and renders.
+     *
+     * Uses BarcodeGenerator which extracts the logic from BarcodeImageWriterTask,
+     * including proper dimension calculations, scaling, and fallback handling.
      */
-    fun generateBarcode(width: Int, height: Int) {
+    fun generateBarcode(width: Int, height: Int, showFallback: Boolean = false) {
         val card = loyaltyCard
         val cardIdToUse = card.barcodeId ?: card.cardId
         val format = card.barcodeType
@@ -136,98 +142,35 @@ class LoyaltyCardEditActivityViewModel(
         barcodeGenerationJob = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.Default) {
-                    generateBarcodeInternal(cardIdToUse, format, width, height)
+                    BarcodeGenerator.generate(
+                        context = application,
+                        cardId = cardIdToUse,
+                        format = format,
+                        imageViewWidth = width,
+                        imageViewHeight = height,
+                        showFallback = showFallback,
+                        roundCornerPadding = true,
+                        isFullscreen = false
+                    )
                 }
-                updateBarcodeState(result)
+
+                val state = if (result.bitmap != null) {
+                    BarcodeState.Generated(
+                        bitmap = result.bitmap,
+                        format = result.format,
+                        isValid = result.isValid,
+                        imagePadding = result.imagePadding,
+                        widthPadding = result.widthPadding
+                    )
+                } else {
+                    BarcodeState.Error
+                }
+                updateBarcodeState(state)
             } catch (e: Exception) {
                 Log.e(TAG, "Barcode generation failed", e)
                 updateBarcodeState(BarcodeState.Error)
             }
         }
-    }
-
-    private fun generateBarcodeInternal(
-        cardId: String,
-        format: CatimaBarcode,
-        width: Int,
-        height: Int
-    ): BarcodeState {
-        var bitmap = generateBitmap(cardId, format, width, height)
-        var isValid = true
-
-        // Try fallback if generation failed
-        if (bitmap == null) {
-            isValid = false
-            getFallbackString(format)?.let { fallbackId ->
-                bitmap = generateBitmap(fallbackId, format, width, height)
-            }
-        }
-
-        return bitmap?.let {
-            BarcodeState.Generated(it, format, isValid)
-        } ?: BarcodeState.Error
-    }
-
-    private fun generateBitmap(cardId: String, format: CatimaBarcode, width: Int, height: Int): Bitmap? {
-        if (cardId.isEmpty() || width <= 0 || height <= 0) return null
-
-        return try {
-            val writer = MultiFormatWriter()
-            val bitMatrix = writer.encode(cardId, format.format(), width, height, null)
-
-            val bitMatrixWidth = bitMatrix.width
-            val bitMatrixHeight = bitMatrix.height
-            val pixels = IntArray(bitMatrixWidth * bitMatrixHeight)
-
-            for (y in 0 until bitMatrixHeight) {
-                val offset = y * bitMatrixWidth
-                for (x in 0 until bitMatrixWidth) {
-                    pixels[offset + x] = if (bitMatrix.get(x, y)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
-                }
-            }
-
-            var bitmap = Bitmap.createBitmap(bitMatrixWidth, bitMatrixHeight, Bitmap.Config.ARGB_8888)
-            bitmap.setPixels(pixels, 0, bitMatrixWidth, 0, 0, bitMatrixWidth, bitMatrixHeight)
-
-            // Scale up small barcodes for sharp rendering
-            val scalingFactor = minOf(height / bitMatrixHeight, width / bitMatrixWidth)
-            if (scalingFactor > 1) {
-                bitmap = Bitmap.createScaledBitmap(
-                    bitmap,
-                    bitMatrixWidth * scalingFactor,
-                    bitMatrixHeight * scalingFactor,
-                    false
-                )
-            }
-
-            bitmap
-        } catch (e: WriterException) {
-            Log.e(TAG, "Failed to generate barcode: $cardId", e)
-            null
-        } catch (e: OutOfMemoryError) {
-            Log.w(TAG, "OOM generating barcode", e)
-            null
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error generating barcode", e)
-            null
-        }
-    }
-
-    private fun getFallbackString(format: CatimaBarcode): String? = when (format.format()) {
-        com.google.zxing.BarcodeFormat.AZTEC -> "AZTEC"
-        com.google.zxing.BarcodeFormat.DATA_MATRIX -> "DATA_MATRIX"
-        com.google.zxing.BarcodeFormat.PDF_417 -> "PDF_417"
-        com.google.zxing.BarcodeFormat.QR_CODE -> "QR_CODE"
-        com.google.zxing.BarcodeFormat.CODABAR -> "C0C"
-        com.google.zxing.BarcodeFormat.CODE_39 -> "CODE_39"
-        com.google.zxing.BarcodeFormat.CODE_93 -> "CODE_93"
-        com.google.zxing.BarcodeFormat.CODE_128 -> "CODE_128"
-        com.google.zxing.BarcodeFormat.EAN_8 -> "32123456"
-        com.google.zxing.BarcodeFormat.EAN_13 -> "5901234123457"
-        com.google.zxing.BarcodeFormat.ITF -> "1003"
-        com.google.zxing.BarcodeFormat.UPC_A -> "123456789012"
-        com.google.zxing.BarcodeFormat.UPC_E -> "0123456"
-        else -> null
     }
 
     var addGroup: String? = null

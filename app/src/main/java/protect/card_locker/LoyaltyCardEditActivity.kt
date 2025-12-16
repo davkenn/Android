@@ -1244,6 +1244,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     R.string.barcodeImageDescriptionWithType,
                     state.format.prettyName()
                 )
+
+                // Apply padding from BarcodeGenerator - matches BarcodeImageWriterTask behavior
+                val halfPadding = state.imagePadding / 2
+                if (state.widthPadding) {
+                    binding.barcode.setPadding(halfPadding, 0, halfPadding, 0)
+                } else {
+                    binding.barcode.setPadding(0, halfPadding, 0, halfPadding)
+                }
+
                 // Gray out invalid (fallback) barcodes
                 if (state.isValid) {
                     binding.barcode.colorFilter = null
