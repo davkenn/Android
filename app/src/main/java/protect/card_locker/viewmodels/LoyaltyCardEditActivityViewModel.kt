@@ -49,7 +49,7 @@ sealed interface CardLoadState {
 sealed interface UiEvent {
     data class ShowToast(val message: String) : UiEvent
     data class ShowError(val message: String) : UiEvent
-    object SaveSuccess : UiEvent
+    data class SaveSuccess(val cardId: Int) : UiEvent
     object LoadFailed : UiEvent
 }
 
@@ -407,7 +407,7 @@ class LoyaltyCardEditActivityViewModel(
             result.fold(
                 onSuccess = { cardId ->
                     _saveState.value = SaveState.Idle
-                    _uiEvents.emit(UiEvent.SaveSuccess)
+                    _uiEvents.emit(UiEvent.SaveSuccess(cardId))
                 },
                 onFailure = { exception ->
                     _saveState.value = SaveState.Idle

@@ -449,6 +449,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_LONG).show()
                     }
                     is UiEvent.SaveSuccess -> {
+                        val card = DBHelper.getLoyaltyCard(this@LoyaltyCardEditActivity, mDatabase, event.cardId)
+                        if (card != null) {
+                            ShortcutHelper.updateShortcuts(this@LoyaltyCardEditActivity, card)
+                        }
                         Toast.makeText(this@LoyaltyCardEditActivity, "Card saved successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     }
