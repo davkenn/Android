@@ -202,7 +202,7 @@ class LoyaltyCardEditActivityViewModel(
                 state.loyaltyCard.headerColor = thumbnailState.headerColor
             }
 
-            _cardState.value = state.copy(thumbnailState = thumbnailState)
+            updateThumbnailState(thumbnailState)
         }
     }
 
