@@ -43,16 +43,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.chip.Chip
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.datepicker.CalendarConstraints
-
 import com.google.android.material.datepicker.DateValidatorPointBackward
 import com.google.android.material.datepicker.DateValidatorPointForward
 import com.google.android.material.datepicker.MaterialDatePicker
-import com.google.android.material.datepicker.MaterialPickerOnPositiveButtonClickListener
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
@@ -60,7 +57,6 @@ import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import com.yalantis.ucrop.UCrop
 import com.yalantis.ucrop.model.AspectRatio
-import protect.card_locker.async.TaskHandler
 import protect.card_locker.databinding.LayoutChipChoiceBinding
 import protect.card_locker.databinding.LoyaltyCardEditActivityBinding
 import protect.card_locker.viewmodels.LoyaltyCardEditActivityViewModel
@@ -75,7 +71,6 @@ import java.util.Date
 import java.util.Locale
 import androidx.core.net.toUri
 import androidx.core.view.allViews
-import androidx.core.view.size
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
@@ -377,8 +372,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        mCropperLauncher = registerForActivityResult(StartActivityForResult()) {
-            result: ActivityResult ->
+        mCropperLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
             val intent = result.data
             if (intent == null) {
                 Log.d("cropper", "ucrop returned a null intent")
@@ -405,8 +399,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
                         }
                         setCardImage(op, resized)
+                        viewModel.currentImageOperation = null
                     }
-                    Log.d("cropper", "requestedImageType: ${viewModel.currentImageOperation}")
                     cleanUpTempImages()
                 } ?: Toast.makeText(
                     this@LoyaltyCardEditActivity,
@@ -415,7 +409,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 ).show()
             }
         }
-
 
         mCropperOptions = UCrop.Options()
 
@@ -464,24 +457,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
         }
-
-        lifecycleScope.launch {
-            viewModel.displayImages.collectLatest { images ->
-                images[ImageLocationType.front]?.let { binding.frontImage.setImageBitmap(it) }
-                    ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
-                images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
-                    ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
-                images[ImageLocationType.icon]?.let { binding.thumbnail.setImageBitmap(it) }
-            }
-        }
-
-        // Observe barcode state - ViewModel generates bitmap, Activity just renders
-        lifecycleScope.launch {
-            viewModel.barcodeState.collectLatest { state ->
-                bindBarcodeToUi(state)
-            }
-        }
-
     }
 
     private fun updateEditText(editText: EditText, newValue: String?) {
@@ -553,6 +528,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             setActiveControlsWidgetColor(if (Utils.isDarkModeEnabled(this@LoyaltyCardEditActivity)) colorOnPrimary else colorPrimary)
         }
     }
+
     private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
 
     private fun bindCardToUi(data: CardLoadState.Success) {
@@ -569,7 +545,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         // which can cause issues when switching locale because it parses the balance and e.g. the decimal separator may have changed.
         formatBalanceCurrencyField(data.loyaltyCard.balanceType)
         val balance = data.loyaltyCard.balance ?: BigDecimal("0")
-        viewModel.setBalance(balance)
         binding.balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
                 data.loyaltyCard.balance,
@@ -582,32 +557,22 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (binding.groupChips.isEmpty()) {
             val existingGroups = data.allGroups
             val loyaltyCardGroups = data.loyaltyCardGroups
-            binding.groupChips.visibility = if (existingGroups.isEmpty()) View.GONE else View.VISIBLE
+            binding.groupChips.visibility =
+                if (existingGroups.isEmpty()) View.GONE else View.VISIBLE
 
             for (group in existingGroups) {
                 val chipChoiceBinding = LayoutChipChoiceBinding
-                    .inflate(LayoutInflater.from(binding.groupChips.context), binding.groupChips, false)
+                    .inflate(
+                        LayoutInflater.from(binding.groupChips.context),
+                        binding.groupChips,
+                        false
+                    )
                 val chip = chipChoiceBinding.getRoot()
                 chip.text = group._id
                 chip.tag = group
-
-                if (group._id == viewModel.addGroup) {
-                    chip.isChecked = true
-                } else {
-                    chip.isChecked = false
-                    for (loyaltyCardGroup in loyaltyCardGroups) {
-                        if (loyaltyCardGroup._id == group._id) {
-                            chip.isChecked = true
-                            break
-                        }
-                    }
-                }
-
-                chip.setOnTouchListener { _, _ ->
-                    viewModel.hasChanged = true
-                    false
-                }
-
+                chip.isChecked =
+                    loyaltyCardGroups.any { group._id == viewModel.addGroup || group._id == it._id }
+                chip.setOnTouchListener { _, _ -> viewModel.hasChanged = true; false }
                 binding.groupChips.addView(chip)
             }
         }
@@ -619,16 +584,18 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.setHeaderColor(color)
         }
 
-        // Observer handles ImageView updates from displayImages
-        // But we need header color processing for the icon
-        setThumbnailImage(viewModel.getImage(ImageLocationType.icon))
+        data.images[ImageLocationType.front]?.let { binding.frontImage.setImageBitmap(it) }
+            ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
+        data.images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
+            ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
+        data.images[ImageLocationType.icon]?.let { binding.thumbnail.setImageBitmap(it) }
 
+        setThumbnailImage(data.images[ImageLocationType.icon])
 
-        if (!viewModel.initDone) {
-            viewModel.initDone = true
-        }
+        if (!viewModel.initDone)  viewModel.initDone = true
 
-        generateBarcode()
+        bindBarcodeToUi(data.barcodeState)
+
         generateIcon(binding.storeNameEdit.text.toString().trim(), data.loyaltyCard.headerColor)
 
         data.loyaltyCard.headerColor?.let { color ->
@@ -659,7 +626,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding.frontImageHolder.setOnClickListener(ChooseCardImage())
         binding.backImageHolder.setOnClickListener(ChooseCardImage())
         binding.thumbnail.setOnClickListener(ChooseCardImage())
-
 
         val saveButton = binding.fabSave
         saveButton.setOnClickListener { v: View -> doSave() }
@@ -709,10 +675,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         loyaltyCardField: LoyaltyCardField
     ) {
         dateField.addTextChangedListener(object : SimpleTextWatcher() {
-            var lastValue: CharSequence? = null
+            var lastValue: String? = null
 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
-                lastValue = s
+                lastValue = s.toString()
             }
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
@@ -724,7 +690,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         else -> throw AssertionError("Unexpected field: $loyaltyCardField")
                     }
                 } else if (s.toString() == getString(chooseDateOptionStringId)) {
-                    if (lastValue.toString() != getString(chooseDateOptionStringId)) {
+                    if (lastValue != getString(chooseDateOptionStringId)) {
                         dateField.setText(lastValue)
                     }
                     showDatePicker(
@@ -1026,7 +992,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         minDate: Date?,
         maxDate: Date?
     ) {
-        // Create a new instance of MaterialDatePicker and return it
+
         val startDate = minDate?.time ?: this.defaultMinDateOfDatePicker
         val endDate = maxDate?.time ?: this.defaultMaxDateOfDatePicker
         val dateValidator = when (loyaltyCardField) {
@@ -1041,7 +1007,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .setEnd(endDate)
             .build()
 
-        // Use the selected date as the default date in the picker
         val calendar = Calendar.getInstance()
         selectedDate?.let { calendar.setTime(it) }
 
@@ -1050,7 +1015,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .setCalendarConstraints(calendarConstraints)
             .build()
 
-        // Use field-specific key so result listener knows which field to update
         val requestKey = when (loyaltyCardField) {
             LoyaltyCardField.validFrom -> PICK_VALID_FROM_DATE_KEY
             LoyaltyCardField.expiry -> PICK_EXPIRY_DATE_KEY
@@ -1089,17 +1053,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
         }
 
-        // Each listener knows exactly which field to update - no ViewModel state needed
         supportFragmentManager.setFragmentResultListener(PICK_VALID_FROM_DATE_KEY, this) { _, result ->
-            val newDate = Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY))
-            formatDateField(this, binding.validFromField, newDate)
-            viewModel.setValidFrom(newDate)
+            viewModel.setValidFrom(Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY)))
         }
 
         supportFragmentManager.setFragmentResultListener(PICK_EXPIRY_DATE_KEY, this) { _, result ->
-            val newDate = Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY))
-            formatDateField(this, binding.expiryField, newDate)
-            viewModel.setExpiry(newDate)
+            viewModel.setExpiry(Date(result.getLong(NEWLY_PICKED_DATE_ARGUMENT_KEY)))
         }
     }
 
@@ -1140,7 +1099,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        if (!validBalance) { // Assuming validBalance is still managed by the Activity's text watchers
+        if (!validBalance) {
             binding.balanceField.error = getString(R.string.balanceParsingFailed)
             if (!hasError) {
                 selectTab(1)
@@ -1248,7 +1207,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
         val ucropIntent = UCrop.of(sourceUri, destUri).withOptions(mCropperOptions).getIntent(this)
             .apply { setClass(this@LoyaltyCardEditActivity, UCropWrapper::class.java) }
-
             // send toolbar font details to ucrop wrapper
         val childTextView = binding.toolbar.allViews.filterIsInstance<AppCompatTextView>().firstOrNull()
         childTextView ?. let {
@@ -1258,14 +1216,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         mCropperLauncher.launch(ucropIntent)
     }
 
-    /**
-     * Triggers barcode generation in ViewModel. Result comes back via barcodeState StateFlow.
-     */
     private fun generateBarcode() {
         if (binding.barcode.height == 0) {
             // Wait for layout to get dimensions
             binding.barcode.viewTreeObserver.addOnGlobalLayoutListener(
-                object : OnGlobalLayoutListener {
+                object  : OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
                         binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
                         viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
@@ -1277,9 +1232,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    /**
-     * Renders barcode state to UI. Called when barcodeState StateFlow emits.
-     */
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {

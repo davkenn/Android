@@ -39,6 +39,8 @@ sealed interface CardLoadState {
         var loyaltyCard: LoyaltyCard,
         val allGroups: List<Group>,
         val loyaltyCardGroups: List<Group>,
+        val images: Map<ImageLocationType, Bitmap?> = emptyMap(),
+        val barcodeState: BarcodeState = BarcodeState.None,
         val version: Long = 0
     ) : CardLoadState
 }
@@ -87,14 +89,6 @@ class LoyaltyCardEditActivityViewModel(
     private val _uiEvents = MutableSharedFlow<UiEvent>(replay = 0)
     val uiEvents = _uiEvents.asSharedFlow()
 
-    // Display images cached separately from LoyaltyCard to avoid defensive copy overhead
-    private val _displayImages = MutableStateFlow<Map<ImageLocationType, Bitmap?>>(emptyMap())
-    val displayImages = _displayImages.asStateFlow()
-
-    // Barcode state - separate from displayImages since it has different rendering needs
-    private val _barcodeState = MutableStateFlow<BarcodeState>(BarcodeState.None)
-    val barcodeState = _barcodeState.asStateFlow()
-
     var tempStoredOldBarcodeValue: String? = null
 
     var initDone = false
@@ -105,12 +99,25 @@ class LoyaltyCardEditActivityViewModel(
 
     private var barcodeGenerationJob: Job? = null
 
+    /** Update barcodeState within the unified CardLoadState */
+    private fun updateBarcodeState(newState: BarcodeState) {
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            _cardState.value = state.copy(barcodeState = newState)
+        }
+    }
+
+    /** Update images within the unified CardLoadState */
+    private fun updateImages(update: (Map<ImageLocationType, Bitmap?>) -> Map<ImageLocationType, Bitmap?>) {
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            _cardState.value = state.copy(images = update(state.images))
+        }
+    }
+
     /**
-     * Generate barcode and store in barcodeState StateFlow.
-     * Activity observes this and renders - no direct ImageView manipulation.
-     *
-     * @param width Target width for barcode bitmap
-     * @param height Target height for barcode bitmap
+     * Generate barcode and store in unified cardState.
+     * Activity observes cardState and renders.
      */
     fun generateBarcode(width: Int, height: Int) {
         val card = loyaltyCard
@@ -119,7 +126,7 @@ class LoyaltyCardEditActivityViewModel(
 
         // No barcode if missing required data
         if (format == null || cardIdToUse.isNullOrEmpty()) {
-            _barcodeState.value = BarcodeState.None
+            updateBarcodeState(BarcodeState.None)
             return
         }
 
@@ -131,10 +138,10 @@ class LoyaltyCardEditActivityViewModel(
                 val result = withContext(Dispatchers.Default) {
                     generateBarcodeInternal(cardIdToUse, format, width, height)
                 }
-                _barcodeState.value = result
+                updateBarcodeState(result)
             } catch (e: Exception) {
                 Log.e(TAG, "Barcode generation failed", e)
-                _barcodeState.value = BarcodeState.Error
+                updateBarcodeState(BarcodeState.Error)
             }
         }
     }
@@ -257,13 +264,12 @@ class LoyaltyCardEditActivityViewModel(
                     _cardState.value = CardLoadState.Success(
                         loyaltyCard = data.loyaltyCard,
                         allGroups = data.allGroups,
-                        loyaltyCardGroups = data.loyaltyCardGroups
-                    )
-                    // Populate display images cache from loaded card (one-time copy on load)
-                    _displayImages.value = mapOf(
-                        ImageLocationType.icon to data.loyaltyCard.getImageThumbnail(application),
-                        ImageLocationType.front to data.loyaltyCard.getImageFront(application),
-                        ImageLocationType.back to data.loyaltyCard.getImageBack(application)
+                        loyaltyCardGroups = data.loyaltyCardGroups,
+                        images = mapOf(
+                            ImageLocationType.icon to data.loyaltyCard.getImageThumbnail(application),
+                            ImageLocationType.front to data.loyaltyCard.getImageFront(application),
+                            ImageLocationType.back to data.loyaltyCard.getImageBack(application)
+                        )
                     )
                 },
                 onFailure = { exception ->
@@ -311,8 +317,8 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
-        // Cache original reference for display (no copy)
-        _displayImages.value = _displayImages.value + (imageLocationType to bitmap)
+        // Update images in unified state
+        updateImages { images -> images + (imageLocationType to bitmap) }
 
         // Store in LoyaltyCard for persistence (it will copy defensively)
         modifyCard {
@@ -324,9 +330,14 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun getImage(imageLocationType: ImageLocationType): Bitmap? =
-        _displayImages.value[imageLocationType]
-            ?: loyaltyCard.getImageForImageLocationType(application, imageLocationType)
+    fun getImage(imageLocationType: ImageLocationType): Bitmap? {
+        val state = _cardState.value
+        return if (state is CardLoadState.Success) {
+            state.images[imageLocationType] ?: loyaltyCard.getImageForImageLocationType(application, imageLocationType)
+        } else {
+            loyaltyCard.getImageForImageLocationType(application, imageLocationType)
+        }
+    }
 
     fun saveCard(selectedGroups: List<Group>) {
         if (_saveState.value is SaveState.Saving) return

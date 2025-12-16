@@ -22,7 +22,7 @@ import org.robolectric.shadows.ShadowLog
 import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_OPEN_SET_ICON_MENU
 import protect.card_locker.LoyaltyCardEditActivity.Companion.BUNDLE_UPDATE
 import protect.card_locker.LoyaltyCardViewActivity.BUNDLE_ID
-import protect.card_locker.viewmodels.BarcodeState
+import protect.card_locker.viewmodels.CardLoadState
 
 @RunWith(RobolectricTestRunner::class)
 class LoyaltyCardEditActivityTest {
@@ -113,11 +113,12 @@ class LoyaltyCardEditActivityTest {
     }
 
     @Test
-    fun testBarcodeStateInitiallyNone() {
+    fun testCardStateSuccessAfterLaunch() {
         launchActivity().use { scenario ->
             scenario.onActivity { activity ->
-                // Barcode state should be None initially
-                assertEquals(BarcodeState.None, activity.viewModel.barcodeState.value)
+                shadowOf(Looper.getMainLooper()).idle()
+                // After activity launch and load, state should be Success
+                assertTrue(activity.viewModel.cardState.value is CardLoadState.Success)
             }
         }
     }

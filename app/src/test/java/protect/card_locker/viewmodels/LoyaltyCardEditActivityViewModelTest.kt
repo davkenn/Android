@@ -21,7 +21,6 @@ import org.robolectric.shadows.ShadowLog
 import protect.card_locker.CardRepository
 import protect.card_locker.LoadedCardData
 import protect.card_locker.LoyaltyCard
-import protect.card_locker.viewmodels.BarcodeState
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -103,8 +102,10 @@ class LoyaltyCardEditActivityViewModelTest {
     }
 
     @Test
-    fun testBarcodeStateInitiallyNone() {
-        assertEquals(BarcodeState.None, viewModel.barcodeState.value)
+    fun testCardStateInitiallyLoading() {
+        // ViewModel starts in Loading state before loadCard() is called
+        // This test verifies the initial state before any data is loaded
+        assertEquals(CardLoadState.Loading, viewModel.cardState.value)
     }
 
     @Test
