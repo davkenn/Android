@@ -24,6 +24,7 @@ import java.math.BigDecimal
 import java.util.Currency
 import java.util.Date
 import protect.card_locker.ImageLocationType
+import protect.card_locker.Utils
 import android.graphics.Bitmap
 import kotlinx.coroutines.withContext
 
@@ -40,6 +41,7 @@ sealed interface CardLoadState {
         val loyaltyCardGroups: List<Group>,
         val images: Map<ImageLocationType, Bitmap?> = emptyMap(),
         val barcodeState: BarcodeState = BarcodeState.None,
+        val thumbnailState: ThumbnailState = ThumbnailState.None,
         val version: Long = 0
     ) : CardLoadState
 }
@@ -72,6 +74,29 @@ sealed interface BarcodeState {
 
     /** Barcode generation failed */
     object Error : BarcodeState
+}
+
+/**
+ * Thumbnail display state - ViewModel computes colors, Activity just renders.
+ * Consolidates all the thumbnail/edit icon color logic in one place.
+ */
+sealed interface ThumbnailState {
+    /** Initial state before card loaded */
+    object None : ThumbnailState
+
+    /**
+     * Thumbnail ready to display.
+     * @param iconBitmap Custom icon image, or null to show generated letter tile
+     * @param letterTileBitmap Pre-generated letter tile (used when iconBitmap is null)
+     * @param headerColor The card's header color (used for letter tile background)
+     * @param needsDarkForeground Whether text/icons should be dark (for contrast)
+     */
+    data class Ready(
+        val iconBitmap: Bitmap?,
+        val letterTileBitmap: Bitmap?,
+        val headerColor: Int,
+        val needsDarkForeground: Boolean
+    ) : ThumbnailState
 }
 
 class LoyaltyCardEditActivityViewModel(
@@ -115,6 +140,69 @@ class LoyaltyCardEditActivityViewModel(
         val state = _cardState.value
         if (state is CardLoadState.Success) {
             _cardState.value = state.copy(images = update(state.images))
+        }
+    }
+
+    /** Update thumbnailState within the unified CardLoadState */
+    private fun updateThumbnailState(newState: ThumbnailState) {
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            _cardState.value = state.copy(thumbnailState = newState)
+        }
+    }
+
+    /**
+     * Compute thumbnail state based on icon image and header color.
+     * Centralizes all the color derivation logic that was scattered in Activity.
+     */
+    private fun computeThumbnailState(
+        iconBitmap: Bitmap?,
+        storeName: String,
+        currentHeaderColor: Int?
+    ): ThumbnailState {
+        // Derive header color: from icon image if present, otherwise use existing or generate
+        val headerColor = when {
+            iconBitmap != null -> Utils.getHeaderColorFromImage(
+                iconBitmap,
+                currentHeaderColor ?: Utils.getHeaderColor(application, loyaltyCard)
+            )
+            currentHeaderColor != null -> currentHeaderColor
+            else -> Utils.getHeaderColor(application, loyaltyCard)
+        }
+
+        val needsDarkForeground = Utils.needsDarkForeground(headerColor)
+
+        // Generate letter tile for when no custom icon
+        val letterTile = if (iconBitmap == null) {
+            Utils.generateIconBitmap(application, storeName, headerColor)
+        } else null
+
+        return ThumbnailState.Ready(
+            iconBitmap = iconBitmap,
+            letterTileBitmap = letterTile,
+            headerColor = headerColor,
+            needsDarkForeground = needsDarkForeground
+        )
+    }
+
+    /**
+     * Recompute thumbnail state. Call when icon, store name, or header color changes.
+     */
+    fun refreshThumbnailState() {
+        val state = _cardState.value
+        if (state is CardLoadState.Success) {
+            val iconBitmap = state.images[ImageLocationType.icon]
+            val storeName = state.loyaltyCard.store ?: ""
+            val headerColor = state.loyaltyCard.headerColor
+
+            val thumbnailState = computeThumbnailState(iconBitmap, storeName, headerColor)
+
+            // Also update headerColor in loyaltyCard if it was derived from icon
+            if (thumbnailState is ThumbnailState.Ready) {
+                state.loyaltyCard.headerColor = thumbnailState.headerColor
+            }
+
+            _cardState.value = state.copy(thumbnailState = thumbnailState)
         }
     }
 
@@ -204,15 +292,28 @@ class LoyaltyCardEditActivityViewModel(
 
             result.fold(
                 onSuccess = { data ->
+                    val iconBitmap = data.loyaltyCard.getImageThumbnail(application)
+                    val storeName = data.loyaltyCard.store ?: ""
+                    val headerColor = data.loyaltyCard.headerColor
+
+                    // Compute initial thumbnail state
+                    val thumbnailState = computeThumbnailState(iconBitmap, storeName, headerColor)
+
+                    // Update header color if derived from icon
+                    if (thumbnailState is ThumbnailState.Ready && iconBitmap != null) {
+                        data.loyaltyCard.headerColor = thumbnailState.headerColor
+                    }
+
                     _cardState.value = CardLoadState.Success(
                         loyaltyCard = data.loyaltyCard,
                         allGroups = data.allGroups,
                         loyaltyCardGroups = data.loyaltyCardGroups,
                         images = mapOf(
-                            ImageLocationType.icon to data.loyaltyCard.getImageThumbnail(application),
+                            ImageLocationType.icon to iconBitmap,
                             ImageLocationType.front to data.loyaltyCard.getImageFront(application),
                             ImageLocationType.back to data.loyaltyCard.getImageBack(application)
-                        )
+                        ),
+                        thumbnailState = thumbnailState
                     )
                 },
                 onFailure = { exception ->
@@ -236,7 +337,11 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    fun onStoreNameChanged(newName: String) = modifyCard { store = newName.trim() }
+    fun onStoreNameChanged(newName: String) {
+        modifyCard { store = newName.trim() }
+        // Recompute thumbnail state since letter tile depends on store name
+        refreshThumbnailState()
+    }
 
     fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
 
@@ -253,7 +358,12 @@ class LoyaltyCardEditActivityViewModel(
     fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
     fun setBarcodeId(barcodeId: String?) = modifyCard { setBarcodeId(barcodeId) }
     fun setBarcodeType(barcodeType: CatimaBarcode?) = modifyCard { setBarcodeType(barcodeType) }
-    fun setHeaderColor(headerColor: Int?) = modifyCard { setHeaderColor(headerColor) }
+
+    fun setHeaderColor(headerColor: Int?) {
+        modifyCard { setHeaderColor(headerColor) }
+        // Recompute thumbnail state since colors depend on header color
+        refreshThumbnailState()
+    }
     
     fun updateCardFromBundle(bundle: android.os.Bundle) = modifyCard {
         updateFromBundle(bundle, false)
@@ -270,6 +380,11 @@ class LoyaltyCardEditActivityViewModel(
                 ImageLocationType.front -> setImageFront(bitmap, path)
                 ImageLocationType.back -> setImageBack(bitmap, path)
             }
+        }
+
+        // Recompute thumbnail state when icon changes
+        if (imageLocationType == ImageLocationType.icon) {
+            refreshThumbnailState()
         }
     }
 

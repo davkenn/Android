@@ -79,6 +79,7 @@ import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
 import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
+import protect.card_locker.viewmodels.ThumbnailState
 import protect.card_locker.viewmodels.UiEvent
 import android.graphics.PorterDuff
 import java.io.File
@@ -588,20 +589,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
         data.images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
             ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
-        data.images[ImageLocationType.icon]?.let { binding.thumbnail.setImageBitmap(it) }
-
-        setThumbnailImage(data.images[ImageLocationType.icon])
 
         if (!viewModel.initDone)  viewModel.initDone = true
 
+        // Bind computed states - ViewModel owns logic, Activity just renders
         bindBarcodeToUi(data.barcodeState)
-
-        generateIcon(binding.storeNameEdit.text.toString().trim(), data.loyaltyCard.headerColor)
-
-        data.loyaltyCard.headerColor?.let { color ->
-            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(color)) Color.BLACK else Color.WHITE)
-            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(color)) Color.WHITE else Color.BLACK)
-        }
+        bindThumbnailToUi(data.thumbnailState)
 
         viewModel.onResuming = false
         viewModel.onRestoring = false
@@ -632,40 +625,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         saveButton.bringToFront()
     }
 
-    private fun setThumbnailImage(bitmap: Bitmap?) {
-
-        if (bitmap != null) {
-            val headerColor = Utils.getHeaderColorFromImage(
-                bitmap,
-                Utils.getHeaderColor(this, viewModel.loyaltyCard)
-            )
-
-            viewModel.setHeaderColor(headerColor)
-
-            binding.thumbnail.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-
-            binding.thumbnailEditIcon.setBackgroundColor(if (Utils.needsDarkForeground(headerColor)) Color.BLACK else Color.WHITE)
-            binding.thumbnailEditIcon.setColorFilter(if (Utils.needsDarkForeground(headerColor)) Color.WHITE else Color.BLACK)
-
-        } else {
-            generateIcon(binding.storeNameEdit.text.toString().trim(), viewModel.loyaltyCard.headerColor)
-            viewModel.loyaltyCard.headerColor?.let {
-                binding.thumbnailEditIcon.setBackgroundColor(
-                    if (Utils.needsDarkForeground(it)) Color.BLACK else Color.WHITE
-                )
-                binding.thumbnailEditIcon.setColorFilter(
-                    if (Utils.needsDarkForeground(it)) Color.WHITE else Color.BLACK
-                )
-            }
-        }
-    }
-
     fun setCardImage(imageop: ImageOperation, bitmap: Bitmap?) {
+        // ViewModel handles updating images and recomputing ThumbnailState
         viewModel.setCardImage(imageop.locationType, bitmap, null)
-
-        if (imageop == ImageOperation.ICON) {
-            setThumbnailImage(bitmap)
-        }
     }
 
     private fun addDateFieldTextChangedListener(
@@ -975,10 +937,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     // ColorPickerDialogListener callback used by the ColorPickerDialog created in ChooseCardImage to set the thumbnail color
     // We don't need to set or check the dialogId since it's only used for that single dialog
     override fun onColorSelected(dialogId: Int, color: Int) {
-        // Save new colour
+        // Clear any custom icon and set new header color
+        // ViewModel will recompute ThumbnailState with letter tile
+        viewModel.setCardImage(ImageLocationType.icon, null, null)
         viewModel.setHeaderColor(color)
-        // Unset image if set
-        setThumbnailImage(null)
     }
 
     // ColorPickerDialogListener callback
@@ -1195,7 +1157,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             .getIntent(this)
             .apply { setClass(this@LoyaltyCardEditActivity, UCropWrapper::class.java) }
 
-        // Pass toolbar font style to ucrop wrapper
         binding.toolbar.allViews
             .filterIsInstance<AppCompatTextView>()
             .firstOrNull()
@@ -1257,12 +1218,30 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    private fun generateIcon(store: String?, headerColor: Int?) {
-        val safeHeaderColor = headerColor ?: return
-        if (viewModel.loyaltyCard.getImageThumbnail(this) == null) {
-            binding.thumbnail.setBackgroundColor(safeHeaderColor)
-            binding.thumbnail.setImageBitmap(Utils.generateIcon(this, store, safeHeaderColor)?.letterTile)
+    /**
+     * Bind thumbnail state to UI - the StateFlow equivalent of the old setThumbnailImage.
+     * All color logic is now computed in ViewModel, Activity just renders.
+     */
+    private fun bindThumbnailToUi(state: ThumbnailState) {
+        if (state !is ThumbnailState.Ready) return
+
+        val bgColor = if (state.needsDarkForeground) Color.BLACK else Color.WHITE
+        val fgColor = if (state.needsDarkForeground) Color.WHITE else Color.BLACK
+
+        // Set thumbnail image: custom icon or letter tile
+        if (state.iconBitmap != null) {
+            binding.thumbnail.setImageBitmap(state.iconBitmap)
+            binding.thumbnail.setBackgroundColor(bgColor)
+        } else {
+            binding.thumbnail.setImageBitmap(state.letterTileBitmap)
+            binding.thumbnail.setBackgroundColor(state.headerColor)
         }
+
+        // Set edit icon colors for contrast
+        binding.thumbnailEditIcon.setBackgroundColor(bgColor)
+        binding.thumbnailEditIcon.setColorFilter(fgColor)
+
+        // Ensure minimum width matches height for square aspect
         binding.thumbnail.minimumWidth = binding.thumbnail.height
     }
 

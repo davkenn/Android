@@ -128,6 +128,15 @@ public class Utils {
         return generateIcon(context, store, backgroundColor, false);
     }
 
+    /**
+     * Generates a letter tile bitmap for the given store name and background color.
+     * This is a convenience method that returns just the Bitmap, for use from other packages.
+     */
+    static public Bitmap generateIconBitmap(Context context, String store, Integer backgroundColor) {
+        LetterBitmap letterBitmap = generateIcon(context, store, backgroundColor, false);
+        return letterBitmap != null ? letterBitmap.getLetterTile() : null;
+    }
+
     static public LetterBitmap generateIcon(Context context, String store, Integer backgroundColor, boolean forShortcut) {
         if (store.length() == 0) {
             return null;
