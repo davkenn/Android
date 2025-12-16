@@ -1133,85 +1133,75 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         return super.onOptionsItemSelected(item)
     }
 
-    private fun startCropperUri(sourceUri: Uri) {
-        Log.d("cropper", "launching cropper with image ${sourceUri.path}")
-        val cropOutput = Utils.createTempFile(this, TEMP_CROP_IMAGE_NAME)
-        val destUri = "file://${cropOutput.absolutePath}".toUri()
-        Log.d("cropper", "asking cropper to output to $destUri")
+    /**
+     * Get image dimensions accounting for EXIF rotation.
+     * Returns null if the image can't be read.
+     */
+    private fun getImageDimensions(uri: Uri): Pair<Float, Float>? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val bitmap = BitmapFactory.decodeStream(stream) ?: return null
 
-        val currentOperation = getCurrentImageOperation()
-        if (currentOperation != null) {
-            mCropperOptions.setToolbarTitle(getString(currentOperation.titleResource))
-        } else {
-            Toast.makeText(this, R.string.generic_error_please_retry, Toast.LENGTH_LONG)
-                .show()
+                // Try to get rotated dimensions from EXIF
+                val rotatedBitmap = try {
+                    contentResolver.openInputStream(uri)?.use { exifStream ->
+                        Utils.rotateBitmap(bitmap, ExifInterface(exifStream))
+                    } ?: bitmap
+                } catch (e: IOException) {
+                    Log.d(TAG, "EXIF reading failed, using original dimensions", e)
+                    bitmap
+                }
+
+                rotatedBitmap.width.toFloat() to rotatedBitmap.height.toFloat()
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Failed to read image dimensions for $uri", e)
+            null
+        }
+    }
+
+    private fun startCropperUri(sourceUri: Uri) {
+        Log.d(TAG, "Launching cropper with image ${sourceUri.path}")
+
+        val currentOperation = getCurrentImageOperation() ?: run {
+            Toast.makeText(this, R.string.generic_error_please_retry, Toast.LENGTH_LONG).show()
             return
         }
 
-        if (currentOperation== ImageOperation.ICON) {
-            setCropperOptions(true, 0f, 0f)
-        } else {
-            // sniff the input image for width and height to work around a ucrop bug
-            var image: Bitmap? = null
-            try {
-                image = BitmapFactory.decodeStream(contentResolver.openInputStream(sourceUri))
-            } catch (e: FileNotFoundException) {
-                e.printStackTrace()
-                Log.d(
-                    "cropper",
-                    "failed opening bitmap for initial width and height for ucrop $sourceUri"
-                )
-            }
-            if (image == null) {
-                Log.d(
-                    "cropper",
-                    "failed loading bitmap for initial width and height for ucrop $sourceUri"
-                )
-                setCropperOptions(true, 0f, 0f)
-            } else {
-                try {
-                    val inputStream = contentResolver.openInputStream(sourceUri) ?:
-                        throw FileNotFoundException("Could not open input stream for $sourceUri")
-
-                    val imageRotated = Utils.rotateBitmap(image, ExifInterface(inputStream))
-
-                    setCropperOptions(
-                        false,
-                        imageRotated.width.toFloat(),
-                        imageRotated.height.toFloat()
-                    )
-                } catch (e: FileNotFoundException) {
-                    e.printStackTrace()
-                    Log.d(
-                        "cropper",
-                        "failed opening image for exif reading before setting initial width and height for ucrop"
-                    )
-                    setCropperOptions(
-                        false,
-                        image.width.toFloat(),
-                        image.height.toFloat()
-                    )
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                    Log.d(
-                        "cropper",
-                        "exif reading failed before setting initial width and height for ucrop"
-                    )
-                    setCropperOptions(
-                        false,
-                        image.width.toFloat(),
-                        image.height.toFloat()
-                    )
+        // Configure cropper options based on operation type
+        val (cardShapeDefault, dimensions) = when (currentOperation) {
+            ImageOperation.ICON -> true to (0f to 0f)
+            else -> {
+                // For FRONT/BACK, read actual dimensions to work around ucrop bug
+                val dims = getImageDimensions(sourceUri)
+                if (dims != null) {
+                    false to dims
+                } else {
+                    Log.d(TAG, "Couldn't read dimensions, using defaults")
+                    true to (0f to 0f)
                 }
             }
         }
-        val ucropIntent = UCrop.of(sourceUri, destUri).withOptions(mCropperOptions).getIntent(this)
+
+        mCropperOptions.setToolbarTitle(getString(currentOperation.titleResource))
+        setCropperOptions(cardShapeDefault, dimensions.first, dimensions.second)
+
+        // Build and launch cropper intent
+        val cropOutput = Utils.createTempFile(this, TEMP_CROP_IMAGE_NAME)
+        val destUri = "file://${cropOutput.absolutePath}".toUri()
+
+        val ucropIntent = UCrop.of(sourceUri, destUri)
+            .withOptions(mCropperOptions)
+            .getIntent(this)
             .apply { setClass(this@LoyaltyCardEditActivity, UCropWrapper::class.java) }
-            // send toolbar font details to ucrop wrapper
-        val childTextView = binding.toolbar.allViews.filterIsInstance<AppCompatTextView>().firstOrNull()
-        childTextView ?. let {
-            ucropIntent.putExtra(UCropWrapper.UCROP_TOOLBAR_TYPEFACE_STYLE,childTextView.typeface.style)
-        }
+
+        // Pass toolbar font style to ucrop wrapper
+        binding.toolbar.allViews
+            .filterIsInstance<AppCompatTextView>()
+            .firstOrNull()
+            ?.let { textView ->
+                ucropIntent.putExtra(UCropWrapper.UCROP_TOOLBAR_TYPEFACE_STYLE, textView.typeface.style)
+            }
 
         mCropperLauncher.launch(ucropIntent)
     }
