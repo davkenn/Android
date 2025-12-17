@@ -408,7 +408,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
                         }
                         setCardImage(op, resized)
-                        viewModel.currentImageOperation = null
+                        //viewModel.currentImageOperation = null
                     }
                     cleanUpTempImages()
                 } ?: Toast.makeText(
