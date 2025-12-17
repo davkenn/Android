@@ -695,7 +695,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             ?: binding.balanceCurrencyField.setText(getString(R.string.points))
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String?>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         onMockedRequestPermissionsResult(requestCode, permissions, grantResults)
     }
@@ -723,7 +723,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     override fun onMockedRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<String?>,
+        permissions: Array<String>,
         grantResults: IntArray
     ) {
         val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
@@ -836,8 +836,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun takePhotoForCard() {
-        viewModel.currentImageOperation = ImageOperation.FRONT
-
         val photoURI = FileProvider.getUriForFile(
             this@LoyaltyCardEditActivity,
             BuildConfig.APPLICATION_ID,
@@ -852,13 +850,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun selectImageFromGallery() {
-        viewModel.currentImageOperation = ImageOperation.FRONT
-
         val photoPickerIntent = Intent(Intent.ACTION_PICK).apply {type = "image/*"}
         val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply{type = "image/*"}
 
         val chooserIntent = Intent.createChooser(photoPickerIntent, getString(R.string.addFromImage))
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(contentIntent) as Array<android.os.Parcelable>)
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf<android.os.Parcelable>(contentIntent))
 
         try {
             mPhotoPickerLauncher.launch(chooserIntent)
@@ -928,19 +924,31 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             cardOptions[getString(R.string.takePhoto)] = {
-
-                PermissionUtils.requestCameraPermission(
-                    this@LoyaltyCardEditActivity,
-                    PERMISSION_REQUEST_CAMERA
-                )
+                viewModel.currentImageOperation = operation
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                    ContextCompat.checkSelfPermission(this@LoyaltyCardEditActivity, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    takePhotoForCard()
+                } else {
+                    androidx.core.app.ActivityCompat.requestPermissions(
+                        this@LoyaltyCardEditActivity,
+                        arrayOf(android.Manifest.permission.CAMERA),
+                        PERMISSION_REQUEST_CAMERA
+                    )
+                }
             }
 
             cardOptions[getString(R.string.addFromImage)] = {
-
-                PermissionUtils.requestStorageReadPermission(
-                    this@LoyaltyCardEditActivity,
-                    PERMISSION_REQUEST_STORAGE
-                )
+                viewModel.currentImageOperation = operation
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ||
+                    ContextCompat.checkSelfPermission(this@LoyaltyCardEditActivity, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                    selectImageFromGallery()
+                } else {
+                    androidx.core.app.ActivityCompat.requestPermissions(
+                        this@LoyaltyCardEditActivity,
+                        arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
+                        PERMISSION_REQUEST_STORAGE
+                    )
+                }
             }
 
             MaterialAlertDialogBuilder(this@LoyaltyCardEditActivity)
