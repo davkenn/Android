@@ -150,7 +150,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.openSetIconMenu = b?.getBoolean(BUNDLE_OPEN_SET_ICON_MENU, false) ?: false
 
             Log.d(TAG, "Edit activity: id=$cardId, isUpdate=$isUpdate, isDuplicate=$isDuplicate")
-            viewModel.loadCard(cardId, importUri, isDuplicate)
+            viewModel.loadCard(cardId, importUri, isDuplicate, intent.extras)
             viewModel.initialized = true
         }
 
@@ -854,7 +854,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply{type = "image/*"}
 
         val chooserIntent = Intent.createChooser(photoPickerIntent, getString(R.string.addFromImage))
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(contentIntent))
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(contentIntent) as Array<android.os.Parcelable>)
 
         try {
             mPhotoPickerLauncher.launch(chooserIntent)

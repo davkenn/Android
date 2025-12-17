@@ -305,7 +305,8 @@ class LoyaltyCardEditActivityViewModel(
     fun loadCard(
         cardId: Int = 0,
         importUri: Uri? = null,
-        isDuplicate: Boolean = false
+        isDuplicate: Boolean = false,
+        bundle: android.os.Bundle? = null
     ) {
         loyaltyCardId = cardId
         _cardState.value = CardLoadState.Loading
@@ -315,6 +316,11 @@ class LoyaltyCardEditActivityViewModel(
 
             result.fold(
                 onSuccess = { data ->
+                    // Apply bundle updates if present
+                    if (bundle != null) {
+                        data.loyaltyCard.updateFromBundle(bundle, false)
+                    }
+
                     val iconBitmap = data.loyaltyCard.getImageThumbnail(application)
                     val storeName = data.loyaltyCard.store ?: ""
                     val headerColor = data.loyaltyCard.headerColor
