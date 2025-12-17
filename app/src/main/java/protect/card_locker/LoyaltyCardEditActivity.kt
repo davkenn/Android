@@ -1,5 +1,6 @@
 package protect.card_locker
 
+import protect.card_locker.debug.monitor
 import android.R as AndroidR
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
@@ -73,7 +74,9 @@ import androidx.core.net.toUri
 import androidx.core.view.allViews
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
@@ -299,8 +302,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         val barcodeFormat = CatimaBarcode.fromPrettyName(bctype)
                         viewModel.setBarcodeType(barcodeFormat)
                 } catch (_: IllegalArgumentException) {
-                        //viewModel.setBarcodeType(null)
-                        //generateBarcode()
+                        viewModel.setBarcodeType(null)
+                        generateBarcode()
                         Toast.makeText(
                             this@LoyaltyCardEditActivity,
                             getString(R.string.unsupportedBarcodeType),
@@ -425,7 +428,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         })
 
         lifecycleScope.launch {
-            viewModel.cardState.collectLatest { state ->
+            viewModel.cardState
+                .monitor("cardState")  // JSON logging for Flow recording
+                .collectLatest { state ->
                 when (state) {
                     is CardLoadState.Loading -> {
                         Log.d(TAG, "Loading card data...")
@@ -434,13 +439,17 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Log.d(TAG, "Card data loaded successfully")
                         bindCardToUi(state)
                     }
+
                 }
             }
         }
 
         lifecycleScope.launch {
             viewModel.saveState.collectLatest { state ->
-                binding.fabSave.isEnabled = state !is SaveState.Saving
+                when (state) {
+                    is SaveState.Idle -> binding.fabSave.isEnabled = true
+                    is SaveState.Saving -> binding.fabSave.isEnabled = false
+                }
             }
         }
 
@@ -450,20 +459,12 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     is UiEvent.ShowToast -> {
                         Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_SHORT).show()
                     }
-                    is UiEvent.ShowError -> {
-                        Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_LONG).show()
-                    }
                     is UiEvent.SaveSuccess -> {
-                        val card = DBHelper.getLoyaltyCard(this@LoyaltyCardEditActivity, mDatabase, event.cardId)
-                        if (card != null) {
-                            ShortcutHelper.updateShortcuts(this@LoyaltyCardEditActivity, card)
-                        }
                         Toast.makeText(this@LoyaltyCardEditActivity, "Card saved successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     }
-                    is UiEvent.LoadFailed -> {
-                        finish()
-                    }
+
+                    is UiEvent.ShowToastRes -> TODO()
                 }
             }
         }
@@ -1188,7 +1189,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (binding.barcode.height == 0) {
             // Wait for layout to get dimensions
             binding.barcode.viewTreeObserver.addOnGlobalLayoutListener(
-                object  : OnGlobalLayoutListener {
+                object : OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
                         binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
                         viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
@@ -1203,7 +1204,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {
-                binding.barcodeLayout.visibility = View.GONE
+                binding.barcodeLayout.visibility = View.INVISIBLE
             }
             is BarcodeState.Generated -> {
                 binding.barcodeLayout.visibility = View.VISIBLE
@@ -1229,7 +1230,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
             is BarcodeState.Error -> {
-                binding.barcodeLayout.visibility = View.GONE
+                binding.barcodeLayout.visibility = View.INVISIBLE
                 Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
             }
         }
@@ -1331,3 +1332,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 }
+
+// Old monitor function removed - now using FlowMonitor.kt from debug package
+

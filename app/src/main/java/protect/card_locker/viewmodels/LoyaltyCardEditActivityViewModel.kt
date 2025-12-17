@@ -26,7 +26,9 @@ import java.util.Date
 import protect.card_locker.ImageLocationType
 import protect.card_locker.Utils
 import android.graphics.Bitmap
+import androidx.annotation.StringRes
 import kotlinx.coroutines.withContext
+import protect.card_locker.R
 
 sealed interface SaveState {
     object Idle : SaveState
@@ -51,11 +53,20 @@ sealed interface CardLoadState {
     ) : CardLoadState
 }
 
+/**
+ * One-time UI events (side effects).
+ * Use for toasts and navigation - NOT for errors that affect rendering.
+ * Errors that affect UI should be in State (CardLoadState.Error, SaveState.Error, etc.)
+ */
 sealed interface UiEvent {
+    /** Informational toast */
     data class ShowToast(val message: String) : UiEvent
-    data class ShowError(val message: String) : UiEvent
-    data class SaveSuccess(val cardId: Int) : UiEvent
-    object LoadFailed : UiEvent
+
+    /** Toast from string resource */
+    data class ShowToastRes(@StringRes val messageResId: Int) : UiEvent
+
+    /** Save succeeded - navigate back with result */
+    object SaveSuccess : UiEvent
 }
 
 /**
@@ -159,35 +170,42 @@ class LoyaltyCardEditActivityViewModel(
     /**
      * Compute thumbnail state based on icon image and header color.
      * Centralizes all the color derivation logic that was scattered in Activity.
+     * Wrapped in try-catch for graceful degradation.
      */
     private fun computeThumbnailState(
         iconBitmap: Bitmap?,
         storeName: String,
         currentHeaderColor: Int?
     ): ThumbnailState {
-        // Derive header color: from icon image if present, otherwise use existing or generate
-        val headerColor = when {
-            iconBitmap != null -> Utils.getHeaderColorFromImage(
-                iconBitmap,
-                currentHeaderColor ?: Utils.getHeaderColor(application, loyaltyCard)
+        return try {
+            // Derive header color: from icon image if present, otherwise use existing or generate
+            val headerColor = when {
+                iconBitmap != null -> Utils.getHeaderColorFromImage(
+                    iconBitmap,
+                    currentHeaderColor ?: Utils.getHeaderColor(application, loyaltyCard)
+                )
+                currentHeaderColor != null -> currentHeaderColor
+                else -> Utils.getHeaderColor(application, loyaltyCard)
+            }
+
+            val needsDarkForeground = Utils.needsDarkForeground(headerColor)
+
+            // Generate letter tile for when no custom icon
+            val letterTile = if (iconBitmap == null) {
+                Utils.generateIconBitmap(application, storeName, headerColor)
+            } else null
+
+            ThumbnailState.Ready(
+                iconBitmap = iconBitmap,
+                letterTileBitmap = letterTile,
+                headerColor = headerColor,
+                needsDarkForeground = needsDarkForeground
             )
-            currentHeaderColor != null -> currentHeaderColor
-            else -> Utils.getHeaderColor(application, loyaltyCard)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to compute thumbnail state", e)
+            ThumbnailState.None
         }
 
-        val needsDarkForeground = Utils.needsDarkForeground(headerColor)
-
-        // Generate letter tile for when no custom icon
-        val letterTile = if (iconBitmap == null) {
-            Utils.generateIconBitmap(application, storeName, headerColor)
-        } else null
-
-        return ThumbnailState.Ready(
-            iconBitmap = iconBitmap,
-            letterTileBitmap = letterTile,
-            headerColor = headerColor,
-            needsDarkForeground = needsDarkForeground
-        )
     }
 
     /**
@@ -325,8 +343,8 @@ class LoyaltyCardEditActivityViewModel(
                 onFailure = { exception ->
                     val message = exception.message ?: "An unknown error occurred while loading card data."
                     Log.w(TAG, "Failed to load card: $message")
-                    _uiEvents.emit(UiEvent.ShowError(message))
-                    _uiEvents.emit(UiEvent.LoadFailed)
+               //     _uiEvents.emit(UiEvent.ShowToastRes("SSS"))
+                    _uiEvents.emit(UiEvent.ShowToast("AAA"))
                 }
             )
         }
@@ -421,14 +439,19 @@ class LoyaltyCardEditActivityViewModel(
             val result = cardRepository.saveCard(loyaltyCard, selectedGroups)
             result.fold(
                 onSuccess = { cardId ->
+                    loyaltyCardId = cardId
                     _saveState.value = SaveState.Idle
-                    _uiEvents.emit(UiEvent.SaveSuccess(cardId))
+                    _uiEvents.emit(UiEvent.SaveSuccess)
                 },
                 onFailure = { exception ->
-                    _saveState.value = SaveState.Idle
                     val message = exception.message ?: "An unknown error occurred during save."
                     Log.e(TAG, "Failed to save card: $message")
-                    _uiEvents.emit(UiEvent.ShowError(message))
+
+                    // Use SaveState.Error so Activity can respond appropriately
+
+
+                    // Also emit toast for immediate user feedback
+                    _uiEvents.emit(UiEvent.ShowToastRes(R.string.generic_error_please_retry))
                 }
             )
         }
