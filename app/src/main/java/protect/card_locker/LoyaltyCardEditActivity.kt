@@ -836,6 +836,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun takePhotoForCard() {
+        viewModel.currentImageOperation = ImageOperation.FRONT
+
         val photoURI = FileProvider.getUriForFile(
             this@LoyaltyCardEditActivity,
             BuildConfig.APPLICATION_ID,
@@ -850,6 +852,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun selectImageFromGallery() {
+        viewModel.currentImageOperation = ImageOperation.FRONT
+
         val photoPickerIntent = Intent(Intent.ACTION_PICK).apply {type = "image/*"}
         val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply{type = "image/*"}
 
@@ -924,7 +928,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             cardOptions[getString(R.string.takePhoto)] = {
-                viewModel.currentImageOperation = operation
+
                 PermissionUtils.requestCameraPermission(
                     this@LoyaltyCardEditActivity,
                     PERMISSION_REQUEST_CAMERA
@@ -932,7 +936,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             cardOptions[getString(R.string.addFromImage)] = {
-                viewModel.currentImageOperation = operation
+
                 PermissionUtils.requestStorageReadPermission(
                     this@LoyaltyCardEditActivity,
                     PERMISSION_REQUEST_STORAGE
@@ -1284,8 +1288,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val locationType: ImageLocationType,
         val titleResource: Int
     ) {
-        FRONT(R.id.frontImage, ImageLocationType.front, R.string.setFrontImage),
-        BACK(R.id.backImage, ImageLocationType.back, R.string.setBackImage),
+        FRONT(R.id.frontImageHolder, ImageLocationType.front, R.string.setFrontImage),
+        BACK(R.id.backImageHolder, ImageLocationType.back, R.string.setBackImage),
         ICON(R.id.thumbnail, ImageLocationType.icon, R.string.setIcon);
 
         companion object {
@@ -1307,7 +1311,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
         // Permission request codes
         private const val PERMISSION_REQUEST_CAMERA = 100
-        private const val PERMISSION_REQUEST_STORAGE = 101
+        private const val PERMISSION_REQUEST_STORAGE = 103
         // Bundle keys
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
