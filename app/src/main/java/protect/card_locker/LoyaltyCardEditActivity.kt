@@ -209,7 +209,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (viewModel.onResuming || viewModel.onRestoring) return
                 try {
-                    val balance = Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
+                    val balance =
+                        Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
                     viewModel.setBalance(balance)
                     binding.balanceField.error = null
                     validBalance = true
@@ -223,11 +224,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.balanceCurrencyField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val currency: Currency? = if (s.toString() == getString(R.string.points)) null else currencies[s.toString()]
+                val currency: Currency? =
+                    if (s.toString() == getString(R.string.points)) null else currencies[s.toString()]
                 viewModel.setBalanceType(currency)
                 if (viewModel.loyaltyCard.balance != null && !viewModel.onResuming && !viewModel.onRestoring) {
                     binding.balanceField.setText(
-                        Utils.formatBalanceWithoutCurrencySymbol(viewModel.loyaltyCard.balance, currency)
+                        Utils.formatBalanceWithoutCurrencySymbol(
+                            viewModel.loyaltyCard.balance,
+                            currency
+                        )
                     )
                 }
             }
@@ -243,8 +248,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         val locale = locales.get(i)
                         currencyPrioritizeLocaleSymbols(currencyList, locale)
                     }
+                } else {
+                    currencyPrioritizeLocaleSymbols(currencyList, mSystemLocale)
                 }
-                else { currencyPrioritizeLocaleSymbols(currencyList, mSystemLocale) }
 
                 currencyList.add(0, getString(R.string.points))
                 binding.balanceCurrencyField.setAdapter(createDropdownAdapter(currencyList))
@@ -256,7 +262,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 if (viewModel.initDone && !viewModel.onResuming) {
                     if (viewModel.tempStoredOldBarcodeValue == null) {
                         if (viewModel.loyaltyCard.barcodeId != null) {
-                            viewModel.tempStoredOldBarcodeValue = binding.barcodeIdField.text.toString()
+                            viewModel.tempStoredOldBarcodeValue =
+                                binding.barcodeIdField.text.toString()
                         }
                     }
                 }
@@ -265,7 +272,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (viewModel.onResuming || viewModel.onRestoring) return
                 viewModel.onCardIdChanged(s.toString())
-                binding.cardIdView.error = if (s.isEmpty()) { getString(R.string.field_must_not_be_empty) } else null
+                binding.cardIdView.error = if (s.isEmpty()) {
+                    getString(R.string.field_must_not_be_empty)
+                } else null
             }
         })
 
@@ -299,23 +308,25 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val bctype = s.toString()
                 try {
-                        val barcodeFormat = CatimaBarcode.fromPrettyName(bctype)
-                        viewModel.setBarcodeType(barcodeFormat)
+                    val barcodeFormat = CatimaBarcode.fromPrettyName(bctype)
+                    viewModel.setBarcodeType(barcodeFormat)
                 } catch (_: IllegalArgumentException) {
-                        viewModel.setBarcodeType(null)
-                        generateBarcode()
-                        Toast.makeText(
-                            this@LoyaltyCardEditActivity,
-                            getString(R.string.unsupportedBarcodeType),
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    viewModel.setBarcodeType(null)
+                    generateBarcode()
+                    Toast.makeText(
+                        this@LoyaltyCardEditActivity,
+                        getString(R.string.unsupportedBarcodeType),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
 
             override fun afterTextChanged(s: Editable?) {
-                binding.barcodeTypeField.setAdapter(createDropdownAdapter(
-                    listOf(getString(R.string.noBarcode)) + CatimaBarcode.barcodePrettyNames
-                ))
+                binding.barcodeTypeField.setAdapter(
+                    createDropdownAdapter(
+                        listOf(getString(R.string.noBarcode)) + CatimaBarcode.barcodePrettyNames
+                    )
+                )
             }
         })
 
@@ -328,7 +339,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 viewModel.selectTab(tab.position)
             }
 
-            override fun onTabUnselected(tab: TabLayout.Tab?) { }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
 
             override fun onTabReselected(tab: TabLayout.Tab) {
                 viewModel.tempStoredOldBarcodeValue?.let {
@@ -339,85 +350,86 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         })
 
-        mPhotoTakerLauncher = registerForActivityResult(TakePicture()) {
-            result: Boolean ->
-            if (result) { startCropperUri(File(cacheDir, TEMP_CAMERA_IMAGE_NAME).toUri()) }
+        mPhotoTakerLauncher = registerForActivityResult(TakePicture()) { result: Boolean ->
+            if (result) {
+                startCropperUri(File(cacheDir, TEMP_CAMERA_IMAGE_NAME).toUri())
+            }
         }
 
         // android 11: wanted to swap it to ActivityResultContracts.GetContent but then it shows a file browsers that shows image mime types, offering gallery in the file browser
-        mPhotoPickerLauncher = registerForActivityResult(StartActivityForResult()) {
-            result: ActivityResult ->
-            if (result.resultCode == RESULT_OK) {
+        mPhotoPickerLauncher =
+            registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == RESULT_OK) {
+                    val intent = result.data
+                    if (intent == null) {
+                        Log.d("photo picker", "photo picker returned without an intent")
+                        return@registerForActivityResult
+                    }
+                    val uri = intent.data
+                    if (uri == null) {
+                        Log.d("photo picker", "photo picker returned intent without a uri")
+                        return@registerForActivityResult
+                    }
+                    startCropperUri(uri)
+                }
+            }
+
+        mCardIdAndBarCodeEditorLauncher =
+            registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == RESULT_OK) {
+                    val resultIntent = result.data
+                    if (resultIntent == null) {
+                        Log.d(TAG, "barcode and card id editor picker returned without an intent")
+                        return@registerForActivityResult
+                    }
+
+                    val resultIntentBundle = resultIntent.extras
+                    if (resultIntentBundle == null) {
+                        Log.d(TAG, "barcode and card id editor picker returned without a bundle")
+                        return@registerForActivityResult
+                    }
+
+                    viewModel.updateCardFromBundle(resultIntentBundle)
+                }
+            }
+
+        mCropperLauncher =
+            registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
                 val intent = result.data
                 if (intent == null) {
-                    Log.d("photo picker", "photo picker returned without an intent")
-                    return@registerForActivityResult
-                }
-                val uri = intent.data
-                if (uri == null) {
-                    Log.d("photo picker", "photo picker returned intent without a uri")
-                    return@registerForActivityResult
-                }
-                startCropperUri(uri)
-            }
-        }
-
-        mCardIdAndBarCodeEditorLauncher = registerForActivityResult(StartActivityForResult()) {
-            result: ActivityResult ->
-            if (result.resultCode == RESULT_OK) {
-                val resultIntent = result.data
-                if (resultIntent == null) {
-                    Log.d(TAG, "barcode and card id editor picker returned without an intent")
+                    Log.d("cropper", "ucrop returned a null intent")
                     return@registerForActivityResult
                 }
 
-                val resultIntentBundle = resultIntent.extras
-                if (resultIntentBundle == null) {
-                    Log.d(TAG, "barcode and card id editor picker returned without a bundle")
-                    return@registerForActivityResult
-                }
+                if (result.resultCode == UCrop.RESULT_ERROR) {
+                    val e = UCrop.getError(intent)
+                        ?: throw RuntimeException("ucrop returned error state but not an error!")
+                    Log.e("cropper error", e.toString())
+                } else if (result.resultCode == RESULT_OK) {
 
-                viewModel.updateCardFromBundle(resultIntentBundle)
-            }
-        }
+                    val debugUri = UCrop.getOutput(intent)
+                        ?: throw RuntimeException("ucrop returned success but not destination uri!")
 
-        mCropperLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
-            val intent = result.data
-            if (intent == null) {
-                Log.d("cropper", "ucrop returned a null intent")
-                return@registerForActivityResult
-            }
-
-            if (result.resultCode == UCrop.RESULT_ERROR) {
-                val e = UCrop.getError(intent) ?:
-                    throw RuntimeException("ucrop returned error state but not an error!")
-                Log.e("cropper error", e.toString())
-            }
-            else if (result.resultCode == RESULT_OK) {
-
-                val debugUri = UCrop.getOutput(intent) ?:
-                    throw RuntimeException("ucrop returned success but not destination uri!")
-
-                Log.d("cropper", "ucrop produced image at $debugUri")
-                val bitmap = BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
-                bitmap?.let { bmp ->
-                    getCurrentImageOperation()?.let { op ->
-                        val resized = if (op == ImageOperation.ICON) {
-                            Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_SMALL.toDouble())
-                        } else {
-                            Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
+                    Log.d("cropper", "ucrop produced image at $debugUri")
+                    val bitmap = BitmapFactory.decodeFile("$cacheDir/$TEMP_CROP_IMAGE_NAME")
+                    bitmap?.let { bmp ->
+                        getCurrentImageOperation()?.let { op ->
+                            val resized = if (op == ImageOperation.ICON) {
+                                Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_SMALL.toDouble())
+                            } else {
+                                Utils.resizeBitmap(bmp, Utils.BITMAP_SIZE_BIG.toDouble())
+                            }
+                            setCardImage(op, resized)
+                            //viewModel.currentImageOperation = null
                         }
-                        setCardImage(op, resized)
-                        //viewModel.currentImageOperation = null
-                    }
-                    cleanUpTempImages()
-                } ?: Toast.makeText(
-                    this@LoyaltyCardEditActivity,
-                    R.string.errorReadingImage,
-                    Toast.LENGTH_LONG
-                ).show()
+                        cleanUpTempImages()
+                    } ?: Toast.makeText(
+                        this@LoyaltyCardEditActivity,
+                        R.string.errorReadingImage,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
-        }
 
         mCropperOptions = UCrop.Options()
 
@@ -431,18 +443,23 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.cardState
                 .monitor("cardState")  // JSON logging for Flow recording
                 .collectLatest { state ->
-                when (state) {
-                    is CardLoadState.Loading -> {
-                        Log.d(TAG, "Loading card data...")
-                    }
-                    is CardLoadState.Success -> {
-                        Log.d(TAG, "Card data loaded successfully")
-                        bindCardToUi(state)
-                    }
-                    is CardLoadState.Error -> {}
+                    when (state) {
+                        is CardLoadState.Loading -> {
+                            Log.d(TAG, "Loading card data...")
+                        }
 
+                        is CardLoadState.Success -> {
+                            Log.d(TAG, "Card data loaded successfully")
+                            bindCardToUi(state)
+                        }
+
+                        is CardLoadState.Error -> {
+                            // Fatal error loading card data - show error and exit
+                            Toast.makeText(this@LoyaltyCardEditActivity, state.messageResId, Toast.LENGTH_LONG).show()
+                            finish()
+                        }
+                    }
                 }
-            }
         }
 
         lifecycleScope.launch {
@@ -450,7 +467,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 when (state) {
                     is SaveState.Idle -> binding.fabSave.isEnabled = true
                     is SaveState.Saving -> binding.fabSave.isEnabled = false
-                    is SaveState.Error -> {}
+                    is SaveState.Error -> {
+                        // Save failed - show error and let user retry
+                        Toast.makeText(this@LoyaltyCardEditActivity, state.messageResId, Toast.LENGTH_LONG).show()
+                        binding.fabSave.isEnabled = true
+                    }
                 }
             }
         }
@@ -459,13 +480,27 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.uiEvents.collect { event ->
                 when (event) {
                     is UiEvent.ShowToast -> {
-                        Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            event.message,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
+
                     is UiEvent.ShowToastRes -> {
-                        Toast.makeText(this@LoyaltyCardEditActivity, event.messageResId, Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            event.messageResId,
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
+
                     is UiEvent.SaveSuccess -> {
-                        Toast.makeText(this@LoyaltyCardEditActivity, "Card saved successfully!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            "Card saved successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         finish()
                     }
                 }
@@ -586,19 +621,29 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        if (data.loyaltyCard.headerColor == null) {
-            // If name is set, pick colour relevant for name. Otherwise pick randomly
-            val color = if (data.loyaltyCard.store.isEmpty()) Utils.getRandomHeaderColor(this)
-                else Utils.getHeaderColor(this, data.loyaltyCard)
-            viewModel.setHeaderColor(color)
+        // One-time setup on initial load only
+        if (!viewModel.initDone) {
+            // Set header color if not already set
+            if (data.loyaltyCard.headerColor == null) {
+                // If name is set, pick colour relevant for name. Otherwise pick randomly
+                val color = if (data.loyaltyCard.store.isEmpty()) Utils.getRandomHeaderColor(this)
+                    else Utils.getHeaderColor(this, data.loyaltyCard)
+                viewModel.setHeaderColor(color)
+            }
+
+            // Generate initial barcode if on CARD tab
+            if (data.currentTab == EditTab.CARD) {
+                generateBarcode()
+            }
+
+            viewModel.initDone = true
         }
 
+        // Always sync UI with current state (runs on every bind)
         data.images[ImageLocationType.front]?.let { binding.frontImage.setImageBitmap(it) }
             ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
         data.images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
             ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
-
-        if (!viewModel.initDone)  viewModel.initDone = true
 
         // Bind computed states - ViewModel owns logic, Activity just renders
         bindBarcodeToUi(data.barcodeState)
@@ -612,10 +657,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding.cardPart.visibility = if (data.currentTab == EditTab.CARD) View.VISIBLE else View.GONE
         binding.optionsPart.visibility = if (data.currentTab == EditTab.OPTIONS) View.VISIBLE else View.GONE
         binding.picturesPart.visibility = if (data.currentTab == EditTab.PHOTOS) View.VISIBLE else View.GONE
-
-        if (data.currentTab == EditTab.CARD) {
-            generateBarcode()
-        }
 
         viewModel.onResuming = false
         viewModel.onRestoring = false
