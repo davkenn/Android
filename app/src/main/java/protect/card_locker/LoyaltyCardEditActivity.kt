@@ -553,7 +553,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         val balance = data.loyaltyCard.balance ?: BigDecimal("0")
         binding.balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
-                data.loyaltyCard.balance,
+                balance,
                 data.loyaltyCard.balanceType
             )
         )
@@ -1125,10 +1125,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         return super.onOptionsItemSelected(item)
     }
 
-    /**
-     * Get image dimensions accounting for EXIF rotation.
-     * Returns null if the image can't be read.
-     */
     private fun getImageDimensions(uri: Uri): Pair<Float, Float>? {
         return try {
             contentResolver.openInputStream(uri)?.use { stream ->
@@ -1344,6 +1340,3 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 }
-
-// Old monitor function removed - now using FlowMonitor.kt from debug package
-

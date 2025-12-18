@@ -350,7 +350,7 @@ class LoyaltyCardEditActivityViewModel(
                     val message = exception.message ?: "An unknown error occurred while loading card data."
                     Log.w(TAG, "Failed to load card: $message")
                //     _uiEvents.emit(UiEvent.ShowToastRes("SSS"))
-                    _uiEvents.emit(UiEvent.ShowToast("AAA"))
+                    _uiEvents.emit(UiEvent.SaveSuccess)
                 }
             )
         }
