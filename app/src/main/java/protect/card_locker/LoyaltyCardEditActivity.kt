@@ -1191,7 +1191,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             null
         }
     }
-
+//The value is not valid for the selected barcode type
     private fun startCropperUri(sourceUri: Uri) {
         Log.d(TAG, "Launching cropper with image ${sourceUri.path}")
 
@@ -1218,7 +1218,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         mCropperOptions.setToolbarTitle(getString(currentOperation.titleResource))
         setCropperOptions(cardShapeDefault, dimensions.first, dimensions.second)
 
-        // Build and launch cropper intent
         val cropOutput = Utils.createTempFile(this, TEMP_CROP_IMAGE_NAME)
         val destUri = "file://${cropOutput.absolutePath}".toUri()
 
@@ -1288,10 +1287,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
     }
 
-    /**
-     * Bind thumbnail state to UI - the StateFlow equivalent of the old setThumbnailImage.
-     * All color logic is now computed in ViewModel, Activity just renders.
-     */
     private fun bindThumbnailToUi(state: ThumbnailState) {
         when (state) {
             is ThumbnailState.None -> {
@@ -1371,6 +1366,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     companion object {
         private const val TAG = "Catima"
         // Temp file constants
+
+        //do i need 3 of each rather than 1?
         private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
         private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
         private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG

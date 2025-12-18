@@ -445,7 +445,7 @@ class LoyaltyCardEditActivityViewModel(
             }
             cardId = newCardId
         }
-        // Regenerate barcode if it's using cardId (matches Java behavior)
+      //should this be sameasid or something rather than null?
         if (loyaltyCard.barcodeId == null && loyaltyCard.barcodeType != null) {
             regenerateBarcode()
         }
@@ -464,13 +464,11 @@ class LoyaltyCardEditActivityViewModel(
 
     fun setBarcodeType(barcodeType: CatimaBarcode?) {
         modifyCard { setBarcodeType(barcodeType) }
-        // Regenerate barcode when barcode type changes (matches Java behavior)
         regenerateBarcode()
     }
 
     fun setHeaderColor(headerColor: Int?) {
         modifyCard { setHeaderColor(headerColor) }
-        // Recompute thumbnail state since colors depend on header color
         refreshThumbnailState()
     }
     
@@ -479,22 +477,42 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     fun setCardImage(imageLocationType: ImageLocationType, bitmap: Bitmap?, path: String?) {
-        // Update images in unified state
-        updateImages { images -> images + (imageLocationType to bitmap) }
+        val state = _cardState.value
+        if (state !is CardLoadState.Success) return
 
-        // Store in LoyaltyCard for persistence (it will copy defensively)
-        modifyCard {
+        // 1. Update Images Map
+        val newImages = state.images + (imageLocationType to bitmap)
+
+        // 2. Update LoyaltyCard Persistence
+        state.loyaltyCard.apply {
             when (imageLocationType) {
                 ImageLocationType.icon -> setImageThumbnail(bitmap, path)
                 ImageLocationType.front -> setImageFront(bitmap, path)
                 ImageLocationType.back -> setImageBack(bitmap, path)
             }
         }
+        hasChanged = true
 
-        // Recompute thumbnail state when icon changes
+        // 3. Compute new Thumbnail State (if icon)
+        var newThumbnailState = state.thumbnailState
         if (imageLocationType == ImageLocationType.icon) {
-            refreshThumbnailState()
+            val storeName = state.loyaltyCard.store
+            // Pass current header color; computeThumbnailState will derive new one from bitmap if present
+            newThumbnailState = computeThumbnailState(bitmap, storeName, state.loyaltyCard.headerColor)
+
+            // Update headerColor in loyaltyCard if it was derived from icon
+            if (newThumbnailState is ThumbnailState.Ready) {
+                state.loyaltyCard.headerColor = newThumbnailState.headerColor
+            }
         }
+
+        // 4. Emit SINGLE new state
+        _cardState.value = state.copy(
+            images = newImages,
+            loyaltyCard = state.loyaltyCard,
+            thumbnailState = newThumbnailState,
+            version = System.currentTimeMillis()
+        )
     }
 
     fun setThumbnailColor(color: Int) {
