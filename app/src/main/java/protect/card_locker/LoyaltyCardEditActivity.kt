@@ -1012,10 +1012,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     // ColorPickerDialogListener callback used by the ColorPickerDialog created in ChooseCardImage to set the thumbnail color
     // We don't need to set or check the dialogId since it's only used for that single dialog
     override fun onColorSelected(dialogId: Int, color: Int) {
-        // Clear any custom icon and set new header color
-        // ViewModel will recompute ThumbnailState with letter tile
-        viewModel.setCardImage(ImageLocationType.icon, null, null)
-        viewModel.setHeaderColor(color)
+        // Clear any custom icon and set new header color atomically
+        viewModel.setThumbnailColor(color)
     }
 
     // ColorPickerDialogListener callback
@@ -1171,6 +1169,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun getImageDimensions(uri: Uri): Pair<Float, Float>? {
+//when i remove a front image but had set it thumbnail its still thumbnail does this match
         return try {
             contentResolver.openInputStream(uri)?.use { stream ->
                 val bitmap = BitmapFactory.decodeStream(stream) ?: return null

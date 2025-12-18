@@ -497,6 +497,18 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
+    fun setThumbnailColor(color: Int) {
+        // Atomically update images (remove icon) and card data (set color)
+        updateImages { images -> images + (ImageLocationType.icon to null) }
+        
+        modifyCard {
+            setImageThumbnail(null, null)
+            setHeaderColor(color)
+        }
+        
+        refreshThumbnailState()
+    }
+
     fun getImage(imageLocationType: ImageLocationType): Bitmap? {
         val state = _cardState.value
         return if (state is CardLoadState.Success) {
