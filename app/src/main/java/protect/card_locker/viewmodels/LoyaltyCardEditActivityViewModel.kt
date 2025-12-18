@@ -165,6 +165,10 @@ class LoyaltyCardEditActivityViewModel(
 
     private var barcodeGenerationJob: Job? = null
 
+    // Store last barcode dimensions for regeneration
+    private var lastBarcodeWidth: Int? = null
+    private var lastBarcodeHeight: Int? = null
+
     /** Update barcodeState within the unified CardLoadState */
     private fun updateBarcodeState(newState: BarcodeState) {
         val state = _cardState.value
@@ -261,6 +265,10 @@ class LoyaltyCardEditActivityViewModel(
      * including proper dimension calculations, scaling, and fallback handling.
      */
     fun generateBarcode(width: Int, height: Int, showFallback: Boolean = false) {
+        // Store dimensions for future regeneration
+        lastBarcodeWidth = width
+        lastBarcodeHeight = height
+
         val card = loyaltyCard
         val cardIdToUse = card.barcodeId ?: card.cardId
         val format = card.barcodeType
@@ -306,6 +314,22 @@ class LoyaltyCardEditActivityViewModel(
                 updateBarcodeState(BarcodeState.Error)
             }
         }
+    }
+
+    /**
+     * Regenerate barcode with stored dimensions.
+     * Called when cardId, barcodeId, or barcodeType changes.
+     * Matches Java behavior where these changes trigger immediate barcode regeneration.
+     */
+    private fun regenerateBarcode() {
+        val width = lastBarcodeWidth
+        val height = lastBarcodeHeight
+
+        // Only regenerate if we have dimensions from a previous generation
+        if (width != null && height != null) {
+            generateBarcode(width, height)
+        }
+        // If no dimensions yet, first generation will happen when Activity calls generateBarcode()
     }
 
     var addGroup: String? = null
@@ -419,19 +443,35 @@ class LoyaltyCardEditActivityViewModel(
 
     fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
 
-    fun onCardIdChanged(newCardId: String) = modifyCard {
-        if (barcodeId != null && barcodeId == cardId) {
-            barcodeId = newCardId
+    fun onCardIdChanged(newCardId: String) {
+        modifyCard {
+            if (barcodeId != null && barcodeId == cardId) {
+                barcodeId = newCardId
+            }
+            cardId = newCardId
         }
-        cardId = newCardId
+        // Regenerate barcode if it's using cardId (matches Java behavior)
+        if (loyaltyCard.barcodeId == null && loyaltyCard.barcodeType != null) {
+            regenerateBarcode()
+        }
     }
 
     fun setValidFrom(validFrom: Date?) = modifyCard { setValidFrom(validFrom) }
     fun setExpiry(expiry: Date?) = modifyCard { setExpiry(expiry) }
     fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
     fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
-    fun setBarcodeId(barcodeId: String?) = modifyCard { setBarcodeId(barcodeId) }
-    fun setBarcodeType(barcodeType: CatimaBarcode?) = modifyCard { setBarcodeType(barcodeType) }
+
+    fun setBarcodeId(barcodeId: String?) {
+        modifyCard { setBarcodeId(barcodeId) }
+        // Regenerate barcode when barcodeId changes (matches Java behavior)
+        regenerateBarcode()
+    }
+
+    fun setBarcodeType(barcodeType: CatimaBarcode?) {
+        modifyCard { setBarcodeType(barcodeType) }
+        // Regenerate barcode when barcode type changes (matches Java behavior)
+        regenerateBarcode()
+    }
 
     fun setHeaderColor(headerColor: Int?) {
         modifyCard { setHeaderColor(headerColor) }

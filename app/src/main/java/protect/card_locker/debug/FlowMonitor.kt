@@ -1,10 +1,12 @@
 package protect.card_locker.debug
 
+import android.graphics.Bitmap
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
 import org.json.JSONObject
 import org.json.JSONArray
+import java.security.MessageDigest
 
 /**
  * Flow Recording Tool for Testing
@@ -70,8 +72,72 @@ private fun serializeValue(value: Any?): Any {
         is String -> value
         is Number -> value
         is Boolean -> value
+        is Bitmap -> serializeBitmap(value)
         is List<*> -> JSONArray(value.map { serializeValue(it) })
         is Map<*, *> -> JSONObject(value.mapKeys { it.key.toString() }.mapValues { serializeValue(it.value) })
         else -> value.toString() // Complex types become strings for now
     }
+}
+
+/**
+ * Serializes a Bitmap to a JSON object with useful metadata
+ *
+ * Instead of logging the object reference (which changes on every new Bitmap),
+ * we compute a content hash so we can identify when two bitmaps have the same pixels.
+ *
+ * Format:
+ * {
+ *   "type": "Bitmap",
+ *   "width": 500,
+ *   "height": 300,
+ *   "config": "ARGB_8888",
+ *   "byteCount": 600000,
+ *   "contentHash": "a1b2c3d4e5f6..."
+ * }
+ */
+private fun serializeBitmap(bitmap: Bitmap): JSONObject {
+    return JSONObject().apply {
+        put("type", "Bitmap")
+        put("width", bitmap.width)
+        put("height", bitmap.height)
+        put("config", bitmap.config?.toString() ?: "null")
+        put("byteCount", bitmap.byteCount)
+
+        // Compute a hash of the bitmap pixels to identify identical content
+        // This is expensive but only runs during debug recording
+        try {
+            val hash = computeBitmapHash(bitmap)
+            put("contentHash", hash)
+        } catch (e: Exception) {
+            put("contentHash", "error:${e.message}")
+        }
+    }
+}
+
+/**
+ * Computes a SHA-256 hash of the bitmap's pixel data
+ *
+ * Two bitmaps with the same pixels will have the same hash,
+ * even if they're different objects in memory.
+ */
+private fun computeBitmapHash(bitmap: Bitmap): String {
+    // Get pixel data as IntArray
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+    // Convert IntArray to ByteArray for hashing
+    val bytes = ByteArray(pixels.size * 4)
+    pixels.forEachIndexed { index, pixel ->
+        bytes[index * 4] = (pixel shr 24).toByte()     // Alpha
+        bytes[index * 4 + 1] = (pixel shr 16).toByte() // Red
+        bytes[index * 4 + 2] = (pixel shr 8).toByte()  // Green
+        bytes[index * 4 + 3] = pixel.toByte()           // Blue
+    }
+
+    // Compute SHA-256 hash
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hashBytes = digest.digest(bytes)
+
+    // Convert to hex string (first 16 hex chars = 8 bytes for readability)
+    return hashBytes.take(8).joinToString("") { "%02x".format(it) }
 }
