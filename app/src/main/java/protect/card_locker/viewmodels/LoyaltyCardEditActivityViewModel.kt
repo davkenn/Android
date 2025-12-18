@@ -33,6 +33,12 @@ import protect.card_locker.R
 sealed interface SaveState {
     object Idle : SaveState
     object Saving : SaveState
+
+    /** Save failed - user can retry */
+    data class Error(
+        val message: String,
+        @StringRes val messageResId: Int = R.string.generic_error_please_retry
+    ) : SaveState
 }
 
 enum class EditTab {
@@ -41,6 +47,7 @@ enum class EditTab {
 
 sealed interface CardLoadState {
     object Loading : CardLoadState
+
     data class Success(
         var loyaltyCard: LoyaltyCard,
         val allGroups: List<Group>,
@@ -50,6 +57,12 @@ sealed interface CardLoadState {
         val thumbnailState: ThumbnailState = ThumbnailState.None,
         val currentTab: EditTab = EditTab.CARD,
         val version: Long = 0
+    ) : CardLoadState
+
+    /** Fatal error loading card - Activity should show error and finish */
+    data class Error(
+        val message: String,
+        @StringRes val messageResId: Int = R.string.noCardExistsError
     ) : CardLoadState
 }
 
@@ -112,6 +125,15 @@ sealed interface ThumbnailState {
         val letterTileBitmap: Bitmap?,
         val headerColor: Int,
         val needsDarkForeground: Boolean
+    ) : ThumbnailState
+
+    /**
+     * Thumbnail computation failed - show fallback letter tile.
+     * Graceful degradation: user can still edit the card.
+     */
+    data class Error(
+        val fallbackColor: Int,
+        val storeName: String
     ) : ThumbnailState
 }
 
@@ -203,9 +225,11 @@ class LoyaltyCardEditActivityViewModel(
             )
         } catch (e: Exception) {
             Log.w(TAG, "Failed to compute thumbnail state", e)
-            ThumbnailState.None
+            ThumbnailState.Error(
+                fallbackColor = Utils.getRandomHeaderColor(application),
+                storeName = storeName
+            )
         }
-
     }
 
     /**
@@ -349,8 +373,19 @@ class LoyaltyCardEditActivityViewModel(
                 onFailure = { exception ->
                     val message = exception.message ?: "An unknown error occurred while loading card data."
                     Log.w(TAG, "Failed to load card: $message")
-               //     _uiEvents.emit(UiEvent.ShowToastRes("SSS"))
-                    _uiEvents.emit(UiEvent.SaveSuccess)
+
+                    // Determine appropriate error message based on context
+                    val messageResId = when {
+                        importUri != null -> R.string.failedParsingImportUriError
+                        cardId > 0 -> R.string.noCardExistsError
+                        else -> R.string.generic_error_please_retry
+                    }
+
+                    // Use State for error - Activity observes and responds
+                    _cardState.value = CardLoadState.Error(
+                        message = message,
+                        messageResId = messageResId
+                    )
                 }
             )
         }
@@ -454,7 +489,10 @@ class LoyaltyCardEditActivityViewModel(
                     Log.e(TAG, "Failed to save card: $message")
 
                     // Use SaveState.Error so Activity can respond appropriately
-
+                    _saveState.value = SaveState.Error(
+                        message = message,
+                        messageResId = R.string.generic_error_please_retry
+                    )
 
                     // Also emit toast for immediate user feedback
                     _uiEvents.emit(UiEvent.ShowToastRes(R.string.generic_error_please_retry))

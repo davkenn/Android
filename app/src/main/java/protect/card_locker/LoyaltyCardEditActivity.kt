@@ -439,6 +439,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         Log.d(TAG, "Card data loaded successfully")
                         bindCardToUi(state)
                     }
+                    is CardLoadState.Error -> {}
 
                 }
             }
@@ -449,6 +450,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 when (state) {
                     is SaveState.Idle -> binding.fabSave.isEnabled = true
                     is SaveState.Saving -> binding.fabSave.isEnabled = false
+                    is SaveState.Error -> {}
                 }
             }
         }
@@ -459,12 +461,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     is UiEvent.ShowToast -> {
                         Toast.makeText(this@LoyaltyCardEditActivity, event.message, Toast.LENGTH_SHORT).show()
                     }
+                    is UiEvent.ShowToastRes -> {
+                        Toast.makeText(this@LoyaltyCardEditActivity, event.messageResId, Toast.LENGTH_LONG).show()
+                    }
                     is UiEvent.SaveSuccess -> {
                         Toast.makeText(this@LoyaltyCardEditActivity, "Card saved successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     }
-
-                    is UiEvent.ShowToastRes -> TODO()
                 }
             }
         }
@@ -1249,26 +1252,45 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
      * All color logic is now computed in ViewModel, Activity just renders.
      */
     private fun bindThumbnailToUi(state: ThumbnailState) {
-        if (state !is ThumbnailState.Ready) return
+        when (state) {
+            is ThumbnailState.None -> {
+                // Initial state, nothing to render yet
+            }
+            is ThumbnailState.Ready -> {
+                val bgColor = if (state.needsDarkForeground) Color.BLACK else Color.WHITE
+                val fgColor = if (state.needsDarkForeground) Color.WHITE else Color.BLACK
 
-        val bgColor = if (state.needsDarkForeground) Color.BLACK else Color.WHITE
-        val fgColor = if (state.needsDarkForeground) Color.WHITE else Color.BLACK
+                // Set thumbnail image: custom icon or letter tile
+                if (state.iconBitmap != null) {
+                    binding.thumbnail.setImageBitmap(state.iconBitmap)
+                    binding.thumbnail.setBackgroundColor(bgColor)
+                } else {
+                    binding.thumbnail.setImageBitmap(state.letterTileBitmap)
+                    binding.thumbnail.setBackgroundColor(state.headerColor)
+                }
 
-        // Set thumbnail image: custom icon or letter tile
-        if (state.iconBitmap != null) {
-            binding.thumbnail.setImageBitmap(state.iconBitmap)
-            binding.thumbnail.setBackgroundColor(bgColor)
-        } else {
-            binding.thumbnail.setImageBitmap(state.letterTileBitmap)
-            binding.thumbnail.setBackgroundColor(state.headerColor)
+                // Set edit icon colors for contrast
+                binding.thumbnailEditIcon.setBackgroundColor(bgColor)
+                binding.thumbnailEditIcon.setColorFilter(fgColor)
+
+                // Ensure minimum width matches height for square aspect
+                binding.thumbnail.minimumWidth = binding.thumbnail.height
+            }
+            is ThumbnailState.Error -> {
+                // Graceful degradation: show fallback letter tile
+                val letterTile = Utils.generateIconBitmap(this, state.storeName, state.fallbackColor)
+                binding.thumbnail.setImageBitmap(letterTile)
+                binding.thumbnail.setBackgroundColor(state.fallbackColor)
+
+                val needsDarkFg = Utils.needsDarkForeground(state.fallbackColor)
+                val bgColor = if (needsDarkFg) Color.BLACK else Color.WHITE
+                val fgColor = if (needsDarkFg) Color.WHITE else Color.BLACK
+                binding.thumbnailEditIcon.setBackgroundColor(bgColor)
+                binding.thumbnailEditIcon.setColorFilter(fgColor)
+
+                binding.thumbnail.minimumWidth = binding.thumbnail.height
+            }
         }
-
-        // Set edit icon colors for contrast
-        binding.thumbnailEditIcon.setBackgroundColor(bgColor)
-        binding.thumbnailEditIcon.setColorFilter(fgColor)
-
-        // Ensure minimum width matches height for square aspect
-        binding.thumbnail.minimumWidth = binding.thumbnail.height
     }
 
     private fun currencyPrioritizeLocaleSymbols(currencyList: ArrayList<String>, locale: Locale?) {
