@@ -115,14 +115,14 @@ sealed interface ThumbnailState {
 
     /**
      * Thumbnail ready to display.
-     * @param iconBitmap Custom icon image, or null to show generated letter tile
-     * @param letterTileBitmap Pre-generated letter tile (used when iconBitmap is null)
+     * @param iconBitmap Custom icon image, or null to show generated letter tile (Activity generates it)
+     * @param storeName Store name (used for letter tile generation)
      * @param headerColor The card's header color (used for letter tile background)
      * @param needsDarkForeground Whether text/icons should be dark (for contrast)
      */
     data class Ready(
         val iconBitmap: Bitmap?,
-        val letterTileBitmap: Bitmap?,
+        val storeName: String,
         val headerColor: Int,
         val needsDarkForeground: Boolean
     ) : ThumbnailState
@@ -216,14 +216,9 @@ class LoyaltyCardEditActivityViewModel(
 
             val needsDarkForeground = Utils.needsDarkForeground(headerColor)
 
-            // Generate letter tile for when no custom icon
-            val letterTile = if (iconBitmap == null) {
-                Utils.generateIconBitmap(application, storeName, headerColor)
-            } else null
-
             ThumbnailState.Ready(
                 iconBitmap = iconBitmap,
-                letterTileBitmap = letterTile,
+                storeName = storeName,
                 headerColor = headerColor,
                 needsDarkForeground = needsDarkForeground
             )

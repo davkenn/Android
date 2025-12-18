@@ -951,6 +951,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 cardOptions[getString(R.string.selectColor)] = {
                     val dialogBuilder = ColorPickerDialog.newBuilder()
                     viewModel.loyaltyCard.headerColor?.let { dialogBuilder.setColor(it) }
+                    dialogBuilder.setPresets(resources.getIntArray(R.array.letter_tile_colors))
                     dialogBuilder.create().show(supportFragmentManager, "color-picker-dialog")
                 }
 
@@ -1306,7 +1307,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     binding.thumbnail.setImageBitmap(state.iconBitmap)
                     binding.thumbnail.setBackgroundColor(bgColor)
                 } else {
-                    binding.thumbnail.setImageBitmap(state.letterTileBitmap)
+                    // Generate letter tile using Activity context to ensure correct theming/dimensions
+                    val letterTile = Utils.generateIconBitmap(this, state.storeName, state.headerColor)
+                    binding.thumbnail.setImageBitmap(letterTile)
                     binding.thumbnail.setBackgroundColor(state.headerColor)
                 }
 
