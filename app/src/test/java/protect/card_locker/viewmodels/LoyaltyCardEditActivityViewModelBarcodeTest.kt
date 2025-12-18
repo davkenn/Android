@@ -48,7 +48,7 @@ class LoyaltyCardEditActivityViewModelBarcodeTest {
         // Setup a card with an existing barcode
         val card = LoyaltyCard().apply {
             cardId = "123456"
-            barcodeType = CatimaBarcode.QR_CODE
+            barcodeType = CatimaBarcode.fromBarcode(com.google.zxing.BarcodeFormat.QR_CODE)
         }
         
         whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
@@ -72,6 +72,7 @@ class LoyaltyCardEditActivityViewModelBarcodeTest {
 
         // ASSERT: State should be None, not Error
         val newState = (viewModel.cardState.value as CardLoadState.Success).barcodeState
+        println("Actual state: $newState")
         assertTrue("State should be None but was $newState", newState is BarcodeState.None)
     }
 }

@@ -72,13 +72,11 @@ sealed interface CardLoadState {
  * Errors that affect UI should be in State (CardLoadState.Error, SaveState.Error, etc.)
  */
 sealed interface UiEvent {
-    /** Informational toast */
+
     data class ShowToast(val message: String) : UiEvent
 
-    /** Toast from string resource */
     data class ShowToastRes(@StringRes val messageResId: Int) : UiEvent
 
-    /** Save succeeded - navigate back with result */
     object SaveSuccess : UiEvent
 }
 
@@ -92,7 +90,6 @@ sealed interface BarcodeState {
     /** No barcode (empty card ID or no barcode type selected) */
     object None : BarcodeState
 
-    /** Barcode generated successfully */
     data class Generated(
         val bitmap: Bitmap,
         val format: CatimaBarcode,
@@ -101,16 +98,10 @@ sealed interface BarcodeState {
         val widthPadding: Boolean = false
     ) : BarcodeState
 
-    /** Barcode generation failed */
     object Error : BarcodeState
 }
 
-/**
- * Thumbnail display state - ViewModel computes colors, Activity just renders.
- * Consolidates all the thumbnail/edit icon color logic in one place.
- */
 sealed interface ThumbnailState {
-    /** Initial state before card loaded */
     object None : ThumbnailState
 
     /**
@@ -127,10 +118,6 @@ sealed interface ThumbnailState {
         val needsDarkForeground: Boolean
     ) : ThumbnailState
 
-    /**
-     * Thumbnail computation failed - show fallback letter tile.
-     * Graceful degradation: user can still edit the card.
-     */
     data class Error(
         val fallbackColor: Int,
         val storeName: String
@@ -177,7 +164,6 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    /** Update images within the unified CardLoadState */
     private fun updateImages(update: (Map<ImageLocationType, Bitmap?>) -> Map<ImageLocationType, Bitmap?>) {
         val state = _cardState.value
         if (state is CardLoadState.Success) {
@@ -500,13 +486,11 @@ class LoyaltyCardEditActivityViewModel(
             // Pass current header color; computeThumbnailState will derive new one from bitmap if present
             newThumbnailState = computeThumbnailState(bitmap, storeName, state.loyaltyCard.headerColor)
 
-            // Update headerColor in loyaltyCard if it was derived from icon
             if (newThumbnailState is ThumbnailState.Ready) {
                 state.loyaltyCard.headerColor = newThumbnailState.headerColor
             }
         }
 
-        // 4. Emit SINGLE new state
         _cardState.value = state.copy(
             images = newImages,
             loyaltyCard = state.loyaltyCard,
@@ -516,7 +500,6 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     fun setThumbnailColor(color: Int) {
-        // Atomically update images (remove icon) and card data (set color)
         updateImages { images -> images + (ImageLocationType.icon to null) }
         
         modifyCard {
