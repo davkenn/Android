@@ -3,6 +3,7 @@ package protect.card_locker.debug
 import android.graphics.Bitmap
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.onEach
 import org.json.JSONObject
 import org.json.JSONArray
@@ -27,10 +28,24 @@ import java.security.MessageDigest
 /**
  * Extension function that monitors Flow emissions and logs them as JSON
  *
+ * For StateFlows, immediately logs the current value when monitoring starts,
+ * then continues logging all future emissions.
+ *
  * @param tag Unique identifier for this flow (e.g., "cardState", "saveState")
  * @return The original flow with monitoring attached
  */
 fun <T> Flow<T>.monitor(tag: String): Flow<T> {
+    // For StateFlows, capture the initial value immediately
+    if (this is StateFlow<T>) {
+        try {
+            val json = createFlowEventJson(tag, this.value)
+            Log.d("FlowRecorder", "FLOW_EVENT:$json")
+        } catch (e: Exception) {
+            Log.e("FlowRecorder", "Failed to serialize initial StateFlow value for $tag", e)
+        }
+    }
+
+    // Then monitor all future emissions (for both StateFlow and SharedFlow)
     return this.onEach { value ->
         try {
             val json = createFlowEventJson(tag, value)
