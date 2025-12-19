@@ -450,7 +450,11 @@ class LoyaltyCardEditActivityViewModel(
 
     fun setBarcodeType(barcodeType: CatimaBarcode?) {
         modifyCard { setBarcodeType(barcodeType) }
-        regenerateBarcode()
+        // If type is null ("No barcode"), immediately clear the barcode state
+        if (barcodeType == null) {
+            updateBarcodeState(BarcodeState.None)
+        }
+        // For non-null types, Activity handles generation with proper visibility management
     }
 
     fun setHeaderColor(headerColor: Int?) {
