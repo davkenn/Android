@@ -81,7 +81,7 @@ import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
 import protect.card_locker.viewmodels.EditTab
-import protect.card_locker.viewmodels.LoyaltyCardEditViewModelFactory
+import protect.card_locker.viewmodels.createLoyaltyCardEditViewModelFactory
 import protect.card_locker.viewmodels.SaveState
 import protect.card_locker.viewmodels.ThumbnailState
 import protect.card_locker.viewmodels.UiEvent
@@ -94,7 +94,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     @get:JvmName("getViewModel")
     val viewModel: LoyaltyCardEditActivityViewModel by lazy {
-        ViewModelProvider(this, LoyaltyCardEditViewModelFactory(application, mDatabase))
+        ViewModelProvider(this, createLoyaltyCardEditViewModelFactory(application, mDatabase))
             .get(LoyaltyCardEditActivityViewModel::class.java)
     }
 

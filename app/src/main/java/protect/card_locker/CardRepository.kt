@@ -20,12 +20,12 @@ data class LoadedCardData(
     val loyaltyCardGroups: List<Group>
 )
 
-class CardRepository(
+open class CardRepository(
     private val database: SQLiteDatabase,
     private val appContext: Context
 ) {
 
-    suspend fun saveCard(loyaltyCard: LoyaltyCard, selectedGroups: List<Group>): Result<Int> = withContext(Dispatchers.IO) {
+    open suspend fun saveCard(loyaltyCard: LoyaltyCard, selectedGroups: List<Group>): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val cardId: Int
             if (loyaltyCard.id > 0) {
@@ -63,7 +63,7 @@ class CardRepository(
         }
     }
 
-    suspend fun loadCardData(
+    open suspend fun loadCardData(
         cardId: Int = 0,
         importUri: Uri? = null,
         isDuplicate: Boolean = false

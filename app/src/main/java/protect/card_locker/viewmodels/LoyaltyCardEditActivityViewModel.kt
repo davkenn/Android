@@ -556,7 +556,7 @@ class LoyaltyCardEditActivityViewModel(
 }
 class LoyaltyCardEditViewModelFactory(
     private val application: Application,
-    private val database: SQLiteDatabase,
+    private val cardRepository: CardRepository,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -564,10 +564,25 @@ class LoyaltyCardEditViewModelFactory(
             @Suppress("UNCHECKED_CAST")
             return LoyaltyCardEditActivityViewModel(
                 application,
-                CardRepository(database, application),
+                cardRepository,
                 dispatcher
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
+}
+
+/**
+ * Convenience factory for production use - creates CardRepository from database
+ */
+fun createLoyaltyCardEditViewModelFactory(
+    application: Application,
+    database: SQLiteDatabase,
+    dispatcher: CoroutineDispatcher = Dispatchers.Main
+): LoyaltyCardEditViewModelFactory {
+    return LoyaltyCardEditViewModelFactory(
+        application,
+        CardRepository(database, application),
+        dispatcher
+    )
 }
