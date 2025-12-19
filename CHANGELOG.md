@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased - 157
+
+- Add duplicate option to main screen and reorder options slightly
+
+## v2.40.0 - 156 (2025-12-08)
+
+- Copy card ID to clipboard from view dialog or long press
+- Swap balance and currency fields to hopefully reduce unintended rounding
+
+## v2.39.2 - 155 (2025-11-04)
+
+- Preparations for future improvements (rewrote many classes to Kotlin)
+
+## v2.39.1 - 154 (2025-10-01)
+
+- Fix possible crash that could occur for cards missing colour information in the database
+
+## v2.39.0 - 153 (2025-09-30)
+
+- Target Android 16
+- Fix possible crash after removing image from card
+- Remove "Screen orientation" feature (Google removed the ability for apps to control screen rotation when targeting Android 16)
+- Add crash reporter to FOSS build (not used in Google Play version, only in other app stores)
+
+## v2.38.0 - 152 (2025-09-12)
+
+- Add support for .pkpasses files
+- Remove Stocard importer (Stocard no longer exists)
+- Temporarily disable widget images below Android 12L (workaround for a crash issue)
+
+## v2.37.0 - 151 (2025-08-22)
+
+- New redesign of the Catima logo
+- Translation updates
+
 ## v2.36.0 - 150 (2025-08-05)
 
 - Add a widget showing all non-archived cards

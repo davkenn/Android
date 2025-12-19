@@ -1,8 +1,9 @@
 package protect.card_locker;
 
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.database.sqlite.SQLiteDatabase;
@@ -261,19 +262,6 @@ public class LoyaltyCardViewActivity extends CatimaAppCompatActivity implements 
         setSupportActionBar(toolbar);
 
         settings = new Settings(this);
-
-        String cardOrientation = settings.getCardViewOrientation();
-        if (cardOrientation.equals(getString(R.string.settings_key_follow_sensor_orientation))) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-        } else if (cardOrientation.equals(getString(R.string.settings_key_lock_on_opening_orientation))) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
-        } else if (cardOrientation.equals(getString(R.string.settings_key_portrait_orientation))) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        } else if (cardOrientation.equals(getString(R.string.settings_key_landscape_orientation))) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        }
 
         if (savedInstanceState != null) {
             mainImageIndex = savedInstanceState.getInt(STATE_IMAGEINDEX);
@@ -717,9 +705,21 @@ public class LoyaltyCardViewActivity extends CatimaAppCompatActivity implements 
             AlertDialog.Builder builder = new MaterialAlertDialogBuilder(LoyaltyCardViewActivity.this);
             builder.setTitle(R.string.cardId);
             builder.setView(cardIdView);
-            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> dialogInterface.dismiss());
+            builder.setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss());
+            builder.setNeutralButton(R.string.copy_value, (dialog, which) -> {
+                copyCardIdToClipboard();
+            });
             AlertDialog dialog = builder.create();
             dialog.show();
+        });
+        binding.mainImageDescription.setOnLongClickListener(view -> {
+            if (mainImageIndex != 0) {
+                // Don't copy to clipboard, we're showing something else
+                return false;
+            }
+
+            copyCardIdToClipboard();
+            return true;
         });
 
         int backgroundHeaderColor = Utils.getHeaderColor(this, loyaltyCard);
@@ -1098,6 +1098,12 @@ public class LoyaltyCardViewActivity extends CatimaAppCompatActivity implements 
     }
 
     private void setMainImagePreviousNextButtons() {
+        // Ensure the main image index is valid. After a card update, some images (front/back/barcode)
+        // may have been removed, so the index should not exceed the number of available images.
+        if(mainImageIndex > imageTypes.size() - 1){
+            mainImageIndex = 0;
+        }
+
         if (imageTypes.size() < 2) {
             binding.mainLeftButton.setVisibility(View.INVISIBLE);
             binding.mainRightButton.setVisibility(View.INVISIBLE);
@@ -1253,5 +1259,21 @@ public class LoyaltyCardViewActivity extends CatimaAppCompatActivity implements 
                             | View.SYSTEM_UI_FLAG_FULLSCREEN
             );
         }
+    }
+
+    private void copyCardIdToClipboard() {
+        // Take the value that’s already displayed to the user
+        String value = loyaltyCard.cardId;
+
+        if (value == null || value.isEmpty()) {
+            Toast.makeText(this, R.string.nothing_to_copy, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText(getString(R.string.cardId), value);
+        cm.setPrimaryClip(clip);
+
+        Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show();
     }
 }
