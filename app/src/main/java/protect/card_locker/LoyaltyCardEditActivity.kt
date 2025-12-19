@@ -307,12 +307,25 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding.barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val bctype = s.toString()
+
+                // Check if "No barcode" was explicitly selected (valid option)
+                if (bctype == getString(R.string.noBarcode)) {
+                    viewModel.setBarcodeType(null)
+                    return
+                }
+
                 try {
                     val barcodeFormat = CatimaBarcode.fromPrettyName(bctype)
                     viewModel.setBarcodeType(barcodeFormat)
-                } catch (_: IllegalArgumentException) {
-                    viewModel.setBarcodeType(null)
+
+                    // Ensure layout is visible before generating (handles transition from GONE)
+                    if (binding.barcodeLayout.visibility != View.VISIBLE) {
+                        binding.barcodeLayout.visibility = View.VISIBLE
+                    }
                     generateBarcode()
+                } catch (_: IllegalArgumentException) {
+                    // Only show error for truly unsupported barcode types
+                    viewModel.setBarcodeType(null)
                     Toast.makeText(
                         this@LoyaltyCardEditActivity,
                         getString(R.string.unsupportedBarcodeType),
@@ -463,7 +476,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         lifecycleScope.launch {
-            viewModel.saveState.collectLatest { state ->
+            viewModel.saveState
+                .monitor("saveState")
+                .collectLatest { state ->
                 when (state) {
                     is SaveState.Idle -> binding.fabSave.isEnabled = true
                     is SaveState.Saving -> binding.fabSave.isEnabled = false
@@ -477,7 +492,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
 
         lifecycleScope.launch {
-            viewModel.uiEvents.collect { event ->
+            viewModel.uiEvents
+                .monitor("uiEvents")
+                .collect { event ->
                 when (event) {
                     is UiEvent.ShowToast -> {
                         Toast.makeText(
@@ -1255,7 +1272,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {
-                binding.barcodeLayout.visibility = View.INVISIBLE
+                binding.barcodeLayout.visibility = View.GONE
             }
             is BarcodeState.Generated -> {
                 binding.barcodeLayout.visibility = View.VISIBLE
@@ -1281,7 +1298,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
             is BarcodeState.Error -> {
-                binding.barcodeLayout.visibility = View.INVISIBLE
+                binding.barcodeLayout.visibility = View.GONE
                 Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
             }
         }
