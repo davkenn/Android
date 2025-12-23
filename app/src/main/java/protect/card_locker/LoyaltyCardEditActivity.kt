@@ -131,6 +131,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
 
+        // Initialize barcode layout to GONE until BarcodeState.Generated
+        binding.barcodeLayout.visibility = View.GONE
+
         cleanUpTempImages()
         binding.barcode.clipToOutline = true
         Utils.applyWindowInsetsAndFabOffset(binding.root, binding.fabSave)
