@@ -274,7 +274,7 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     /**
-     * Recompute thumbnail state. Call when icon, store name, or header color changes.
+     *  Call when icon, store name, or header color changes.
      */
     fun refreshThumbnailState() {
         val state = _cardState.value
@@ -294,10 +294,6 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
-    /**
-     * The core suspend function that performs barcode generation.
-     * It is called by the reactive `combine` flow collector.
-     */
     internal suspend fun generateBarcode(cardId: String, format: CatimaBarcode, width: Int, height: Int) {
         try {
             val result = withContext(Dispatchers.Default) {
@@ -458,10 +454,22 @@ class LoyaltyCardEditActivityViewModel(
 
     fun setBarcodeId(barcodeId: String?) {
         modifyCard { setBarcodeId(barcodeId) }
+
+        // If barcode ID is cleared and we have no barcode type, immediately clear barcode display
+        val state = _cardState.value
+        if (barcodeId.isNullOrEmpty() && state is CardLoadState.Success && state.loyaltyCard.barcodeType == null) {
+            updateBarcodeState(BarcodeState.None)
+        }
     }
 
     fun setBarcodeType(barcodeType: CatimaBarcode?) {
         modifyCard { setBarcodeType(barcodeType) }
+
+        // Immediately clear barcode display when type is set to null
+        // This bypasses the debounced reactive flow to provide instant feedback
+        if (barcodeType == null) {
+            updateBarcodeState(BarcodeState.None)
+        }
     }
 
     fun setHeaderColor(headerColor: Int?) {

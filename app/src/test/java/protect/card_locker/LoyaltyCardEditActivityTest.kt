@@ -53,7 +53,6 @@ class LoyaltyCardEditActivityTest {
     fun testActivityCreation() {
         launchActivity().use { scenario ->
             scenario.onActivity { activity ->
-                // Verify activity title is set correctly
                 assertEquals(
                     activity.title.toString(),
                     activity.getString(R.string.addCardTitle, activity.getString(R.string.app_name))

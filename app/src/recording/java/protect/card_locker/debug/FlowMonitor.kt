@@ -12,17 +12,32 @@ import java.security.MessageDigest
 /**
  * Flow Recording Tool for Testing
  *
- * TEMPORARY FILE - Not for production or OSS commits
+ * COMPILE-TIME SAFE - Only available in "recording" build variants
+ *
+ * This file lives in app/src/recording/ and is ONLY compiled when you
+ * switch to a recording build variant (fossRecordingDebug or gplayRecordingDebug).
+ *
+ * In standard variants, `.monitor()` calls will cause compile errors,
+ * making it impossible to accidentally ship recording code to production.
  *
  * Usage:
- * 1. Copy this file into your project at: app/src/main/java/protect/card_locker/debug/
+ * 1. Switch to recording build variant in Android Studio
  * 2. Add .monitor("flowName") to flows you want to record
  * 3. Run the app and interact normally
- * 4. Use record_session.sh to capture and parse logs
- * 5. Remove this file before committing
+ * 4. Use AndroidTestingTools/flow-recorder/record_session.sh to capture logs
+ * 5. Parse with parse_flows.py to generate test fixtures
+ * 6. Switch back to standard variant (monitor calls won't compile - safe!)
  *
  * Example:
- *   val cardState = _cardState.asStateFlow().monitor("cardState")
+ *   lifecycleScope.launch {
+ *       viewModel.cardState
+ *           .monitor("cardState")  // Only compiles in recording variant!
+ *           .collectLatest { state ->
+ *               // Your UI logic
+ *           }
+ *   }
+ *
+ * See: /docs/FLOW_RECORDING.md for complete workflow
  */
 
 /**

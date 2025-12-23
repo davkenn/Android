@@ -50,8 +50,11 @@ android {
         viewBinding = true
     }
 
-    flavorDimensions.add("type")
+    // Two flavor dimensions: type (foss/gplay) and recording (standard/recording)
+    flavorDimensions.addAll(listOf("type", "recording"))
+
     productFlavors {
+        // Type dimension: foss vs gplay
         create("foss") {
             dimension = "type"
             isDefault = true
@@ -65,6 +68,21 @@ android {
 
             // Google Play already sends crashes to the Google Play Console
             buildConfigField("boolean", "useAcraCrashReporter", "false")
+        }
+
+        // Recording dimension: standard (production-ready) vs recording (with FlowMonitor)
+        create("standard") {
+            dimension = "recording"
+            isDefault = true
+            // No special config - production-ready code without FlowMonitor
+        }
+        create("recording") {
+            dimension = "recording"
+            applicationIdSuffix = ".recording"
+            versionNameSuffix = "-recording"
+
+            // Build config flag to detect recording mode at runtime (if needed)
+            buildConfigField("boolean", "FLOW_RECORDING_ENABLED", "true")
         }
     }
 
@@ -88,6 +106,9 @@ android {
         getByName("test") {
             resources.srcDirs("src/test/res")
         }
+
+        // Recording flavor automatically uses src/recording/java
+        // Gradle detects it based on flavor name
     }
 
     // Starting with Android Studio 3 Robolectric is unable to find resources.

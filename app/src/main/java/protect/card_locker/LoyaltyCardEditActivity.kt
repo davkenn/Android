@@ -601,7 +601,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         formatDateField(this, binding.validFromField, data.loyaltyCard.validFrom)
         formatDateField(this, binding.expiryField, data.loyaltyCard.expiry)
         updateEditText(binding.cardIdView, data.loyaltyCard.cardId)
-        updateEditText(binding.barcodeIdField, data.loyaltyCard.barcodeId ?: getString(R.string.sameAsCardId))
+
+        // Show "Same as Card ID" when barcodeId matches cardId or is null (meaning they're synced)
+        val barcodeIdDisplay = when {
+            data.loyaltyCard.barcodeId == null -> getString(R.string.sameAsCardId)
+            data.loyaltyCard.barcodeId == data.loyaltyCard.cardId -> getString(R.string.sameAsCardId)
+            else -> data.loyaltyCard.barcodeId
+        }
+        updateEditText(binding.barcodeIdField, barcodeIdDisplay)
         updateEditText(binding.barcodeTypeField, data.loyaltyCard.barcodeType?.prettyName() ?: getString(R.string.noBarcode))
         // We set the balance here (with onResuming/onRestoring == true) to prevent formatBalanceCurrencyField() from setting it (via onTextChanged),
         // which can cause issues when switching locale because it parses the balance and e.g. the decimal separator may have changed.
