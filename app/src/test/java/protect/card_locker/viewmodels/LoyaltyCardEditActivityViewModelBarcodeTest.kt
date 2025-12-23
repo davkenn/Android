@@ -21,6 +21,7 @@ import protect.card_locker.CardRepository
 import protect.card_locker.CatimaBarcode
 import protect.card_locker.LoadedCardData
 import protect.card_locker.LoyaltyCard
+import com.google.zxing.BarcodeFormat
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -59,7 +60,12 @@ class LoyaltyCardEditActivityViewModelBarcodeTest {
         advanceUntilIdle()
 
         // Simulate initial generation (Activity usually calls this)
-        viewModel.generateBarcode(100, 100)
+        viewModel.generateBarcode(
+            cardId = card.cardId ?: "",
+            format = card.barcodeType ?: CatimaBarcode.fromBarcode(BarcodeFormat.QR_CODE),
+            width = 100,
+            height = 100
+        )
         advanceUntilIdle()
 
         // Verify initial state is Generated

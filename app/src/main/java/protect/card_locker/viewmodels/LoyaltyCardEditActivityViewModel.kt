@@ -14,6 +14,12 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeGenerator
 import protect.card_locker.CardRepository
@@ -127,7 +133,7 @@ sealed interface ThumbnailState {
 class LoyaltyCardEditActivityViewModel(
     private val application: Application,
     private val cardRepository: CardRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher
 ) : ViewModel() {
     private companion object {
         private const val TAG = "Catima"
@@ -150,11 +156,61 @@ class LoyaltyCardEditActivityViewModel(
     var initialized: Boolean = false
     var hasChanged: Boolean = false
 
+    private val _barcodeDimensions = MutableStateFlow<Pair<Int, Int>?>(null)
+
+    private data class BarcodeTriggerData(val cardId: String?, val format: CatimaBarcode?, val width: Int, val height: Int)
+    
+    // Local job to manage the barcode generation task, allowing cancellation.
     private var barcodeGenerationJob: Job? = null
 
-    // Store last barcode dimensions for regeneration
-    private var lastBarcodeWidth: Int? = null
-    private var lastBarcodeHeight: Int? = null
+    init {
+        viewModelScope.launch(dispatcher) {
+            combine(
+                _cardState, // Directly observe the mutable state flow
+                _barcodeDimensions
+            ) { state, dims ->
+                if (state is CardLoadState.Success && dims != null) {
+                    BarcodeTriggerData(
+                        cardId = state.loyaltyCard.barcodeId ?: state.loyaltyCard.cardId,
+                        format = state.loyaltyCard.barcodeType,
+                        width = dims.first,
+                        height = dims.second
+                    )
+                } else {
+                    null
+                }
+            }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .debounce(200) // A short debounce is sufficient here.
+                .collect { params ->
+                    // Only attempt generation if we have valid card data and format.
+                    if (params.cardId != null && params.format != null) {
+                        barcodeGenerationJob?.cancel() // Cancel any previous generation
+                        barcodeGenerationJob = viewModelScope.launch(dispatcher) {
+                            generateBarcode(
+                                cardId = params.cardId,
+                                format = params.format,
+                                width = params.width,
+                                height = params.height
+                            )
+                        }
+                    } else {
+                        // If data is insufficient, clear barcode display
+                        updateBarcodeState(BarcodeState.None)
+                    }
+                }
+        }
+    }
+
+    /**
+     * Called by the Activity once the barcode view's dimensions are known.
+     */
+    fun updateBarcodeDimensions(width: Int, height: Int) {
+        if (width > 0 && height > 0) {
+            _barcodeDimensions.value = Pair(width, height)
+        }
+    }
 
     /** Update barcodeState within the unified CardLoadState */
     private fun updateBarcodeState(newState: BarcodeState) {
@@ -239,78 +295,40 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     /**
-     * Generate barcode using BarcodeGenerator and store in unified cardState.
-     * Activity observes cardState and renders.
-     *
-     * Uses BarcodeGenerator which extracts the logic from BarcodeImageWriterTask,
-     * including proper dimension calculations, scaling, and fallback handling.
+     * The core suspend function that performs barcode generation.
+     * It is called by the reactive `combine` flow collector.
      */
-    fun generateBarcode(width: Int, height: Int, showFallback: Boolean = false) {
-        // Store dimensions for future regeneration
-        lastBarcodeWidth = width
-        lastBarcodeHeight = height
-
-        val card = loyaltyCard
-        val cardIdToUse = card.barcodeId ?: card.cardId
-        val format = card.barcodeType
-
-        // No barcode if missing required data
-        if (format == null || cardIdToUse.isNullOrEmpty()) {
-            updateBarcodeState(BarcodeState.None)
-            return
-        }
-
-        // Cancel any in-progress generation
-        barcodeGenerationJob?.cancel()
-
-        barcodeGenerationJob = viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.Default) {
-                    BarcodeGenerator.generate(
-                        context = application,
-                        cardId = cardIdToUse,
-                        format = format,
-                        imageViewWidth = width,
-                        imageViewHeight = height,
-                        showFallback = showFallback,
-                        roundCornerPadding = true,
-                        isFullscreen = false
-                    )
-                }
-
-                val state = if (result.bitmap != null) {
-                    BarcodeState.Generated(
-                        bitmap = result.bitmap,
-                        format = result.format,
-                        isValid = result.isValid,
-                        imagePadding = result.imagePadding,
-                        widthPadding = result.widthPadding
-                    )
-                } else {
-                    BarcodeState.Error
-                }
-                updateBarcodeState(state)
-            } catch (e: Exception) {
-                Log.e(TAG, "Barcode generation failed", e)
-                updateBarcodeState(BarcodeState.Error)
+    internal suspend fun generateBarcode(cardId: String, format: CatimaBarcode, width: Int, height: Int) {
+        try {
+            val result = withContext(Dispatchers.Default) {
+                BarcodeGenerator.generate(
+                    context = application,
+                    cardId = cardId,
+                    format = format,
+                    imageViewWidth = width,
+                    imageViewHeight = height,
+                    showFallback = true, // Always attempt to show a fallback
+                    roundCornerPadding = true,
+                    isFullscreen = false
+                )
             }
-        }
-    }
 
-    /**
-     * Regenerate barcode with stored dimensions.
-     * Called when cardId, barcodeId, or barcodeType changes.
-     * Matches Java behavior where these changes trigger immediate barcode regeneration.
-     */
-    private fun regenerateBarcode() {
-        val width = lastBarcodeWidth
-        val height = lastBarcodeHeight
-
-        // Only regenerate if we have dimensions from a previous generation
-        if (width != null && height != null) {
-            generateBarcode(width, height)
+            val state = if (result.bitmap != null) {
+                BarcodeState.Generated(
+                    bitmap = result.bitmap,
+                    format = result.format,
+                    isValid = result.isValid,
+                    imagePadding = result.imagePadding,
+                    widthPadding = result.widthPadding
+                )
+            } else {
+                BarcodeState.Error
+            }
+            updateBarcodeState(state)
+        } catch (e: Exception) {
+            Log.e(TAG, "Barcode generation failed", e)
+            updateBarcodeState(BarcodeState.Error)
         }
-        // If no dimensions yet, first generation will happen when Activity calls generateBarcode()
     }
 
     var addGroup: String? = null
@@ -426,14 +444,10 @@ class LoyaltyCardEditActivityViewModel(
 
     fun onCardIdChanged(newCardId: String) {
         modifyCard {
-            if (barcodeId != null && barcodeId == cardId) {
+            if (barcodeId == null || barcodeId == cardId) {
                 barcodeId = newCardId
             }
             cardId = newCardId
-        }
-      //should this be sameasid or something rather than null?
-        if (loyaltyCard.barcodeId == null && loyaltyCard.barcodeType != null) {
-            regenerateBarcode()
         }
     }
 
@@ -444,17 +458,10 @@ class LoyaltyCardEditActivityViewModel(
 
     fun setBarcodeId(barcodeId: String?) {
         modifyCard { setBarcodeId(barcodeId) }
-        // Regenerate barcode when barcodeId changes (matches Java behavior)
-        regenerateBarcode()
     }
 
     fun setBarcodeType(barcodeType: CatimaBarcode?) {
         modifyCard { setBarcodeType(barcodeType) }
-        // If type is null ("No barcode"), immediately clear the barcode state
-        if (barcodeType == null) {
-            updateBarcodeState(BarcodeState.None)
-        }
-        // For non-null types, Activity handles generation with proper visibility management
     }
 
     fun setHeaderColor(headerColor: Int?) {
@@ -557,7 +564,7 @@ class LoyaltyCardEditActivityViewModel(
 class LoyaltyCardEditViewModelFactory(
     private val application: Application,
     private val cardRepository: CardRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LoyaltyCardEditActivityViewModel::class.java)) {
@@ -574,6 +581,7 @@ class LoyaltyCardEditViewModelFactory(
 
 /**
  * Convenience factory for production use - creates CardRepository from database
+ * and defaults to the main dispatcher.
  */
 fun createLoyaltyCardEditViewModelFactory(
     application: Application,

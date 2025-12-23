@@ -27,6 +27,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
+import android.view.ViewTreeObserver
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
@@ -1257,15 +1258,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         if (binding.barcode.height == 0) {
             // Wait for layout to get dimensions
             binding.barcode.viewTreeObserver.addOnGlobalLayoutListener(
-                object : OnGlobalLayoutListener {
+                object : ViewTreeObserver.OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
                         binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                        viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
+                        viewModel.updateBarcodeDimensions(binding.barcode.width, binding.barcode.height)
                     }
                 }
             )
         } else {
-            viewModel.generateBarcode(binding.barcode.width, binding.barcode.height)
+            viewModel.updateBarcodeDimensions(binding.barcode.width, binding.barcode.height)
         }
     }
 
@@ -1282,7 +1283,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     state.format.prettyName()
                 )
 
-                // Apply padding from BarcodeGenerator - matches BarcodeImageWriterTask behavior
                 val halfPadding = state.imagePadding / 2
                 if (state.widthPadding) {
                     binding.barcode.setPadding(halfPadding, 0, halfPadding, 0)
@@ -1313,26 +1313,22 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val bgColor = if (state.needsDarkForeground) Color.BLACK else Color.WHITE
                 val fgColor = if (state.needsDarkForeground) Color.WHITE else Color.BLACK
 
-                // Set thumbnail image: custom icon or letter tile
                 if (state.iconBitmap != null) {
                     binding.thumbnail.setImageBitmap(state.iconBitmap)
                     binding.thumbnail.setBackgroundColor(bgColor)
                 } else {
-                    // Generate letter tile using Activity context to ensure correct theming/dimensions
                     val letterTile = Utils.generateIconBitmap(this, state.storeName, state.headerColor)
                     binding.thumbnail.setImageBitmap(letterTile)
                     binding.thumbnail.setBackgroundColor(state.headerColor)
                 }
 
-                // Set edit icon colors for contrast
                 binding.thumbnailEditIcon.setBackgroundColor(bgColor)
                 binding.thumbnailEditIcon.setColorFilter(fgColor)
 
-                // Ensure minimum width matches height for square aspect
                 binding.thumbnail.minimumWidth = binding.thumbnail.height
             }
             is ThumbnailState.Error -> {
-                // Graceful degradation: show fallback letter tile
+
                 val letterTile = Utils.generateIconBitmap(this, state.storeName, state.fallbackColor)
                 binding.thumbnail.setImageBitmap(letterTile)
                 binding.thumbnail.setBackgroundColor(state.fallbackColor)
@@ -1342,7 +1338,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 val fgColor = if (needsDarkFg) Color.WHITE else Color.BLACK
                 binding.thumbnailEditIcon.setBackgroundColor(bgColor)
                 binding.thumbnailEditIcon.setColorFilter(fgColor)
-
                 binding.thumbnail.minimumWidth = binding.thumbnail.height
             }
         }
@@ -1388,14 +1383,11 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         private val TEMP_CAMERA_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_camera_image.jpg"
         private val TEMP_CROP_IMAGE_NAME = "${LoyaltyCardEditActivity::class.java.simpleName}_crop_image.png"
         private val TEMP_CROP_IMAGE_FORMAT = CompressFormat.PNG
-        // Date picker keys - separate keys per field to avoid ViewModel state
         private const val PICK_VALID_FROM_DATE_KEY = "pick_valid_from_date"
         private const val PICK_EXPIRY_DATE_KEY = "pick_expiry_date"
         private const val NEWLY_PICKED_DATE_ARGUMENT_KEY = "newly_picked_date"
-        // Permission request codes
         private const val PERMISSION_REQUEST_CAMERA = 100
         private const val PERMISSION_REQUEST_STORAGE = 103
-        // Bundle keys
         const val BUNDLE_ID: String = "id"
         const val BUNDLE_DUPLICATE_ID: String = "duplicateId"
         const val BUNDLE_UPDATE: String = "update"

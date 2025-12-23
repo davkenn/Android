@@ -1,0 +1,23 @@
+# Recording session outputs
+recordings/*.txt
+recordings/*.json
+recordings/*.kt
+
+# Keep the directory structure
+!recordings/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -103,7 +103,12 @@ class LoyaltyCardEditActivityViewModelBugFixTest {
         )
 
         // Act: Generate barcode with dimensions (simulates Activity calling this)
-        viewModel.generateBarcode(width = 500, height = 300)
+        viewModel.generateBarcode(
+            cardId = "afdsdf", // From fixture
+            format = CatimaBarcode.fromBarcode(BarcodeFormat.CODE_128),
+            width = 500,
+            height = 300
+        )
 
         // Assert: Barcode generation should succeed, NOT show Error
         val afterGenerationState = viewModel.cardState.value as CardLoadState.Success
@@ -151,7 +156,12 @@ class LoyaltyCardEditActivityViewModelBugFixTest {
         viewModel.loadCard(cardId = 1)
 
         // Generate the initial barcode (simulates Activity behavior)
-        viewModel.generateBarcode(width = 500, height = 300)
+        viewModel.generateBarcode(
+            cardId = "afdsdf", // From fixture
+            format = CatimaBarcode.fromBarcode(BarcodeFormat.AZTEC), // From fixture
+            width = 500,
+            height = 300
+        )
 
         // Verify initial barcode is generated
         val initialState = viewModel.cardState.value as CardLoadState.Success
