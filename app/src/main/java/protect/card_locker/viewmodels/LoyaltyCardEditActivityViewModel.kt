@@ -152,15 +152,12 @@ class LoyaltyCardEditActivityViewModel(
 
     var initDone = false
     var onRestoring = false
-    var onResuming = false
     var initialized: Boolean = false
     var hasChanged: Boolean = false
 
     private val _barcodeDimensions = MutableStateFlow<Pair<Int, Int>?>(null)
 
     private data class BarcodeTriggerData(val cardId: String?, val format: CatimaBarcode?, val width: Int, val height: Int)
-    
-    // Local job to manage the barcode generation task, allowing cancellation.
     private var barcodeGenerationJob: Job? = null
 
     init {
@@ -186,7 +183,6 @@ class LoyaltyCardEditActivityViewModel(
                 .collect { params ->
                     // Only attempt generation if we have valid card data and format.
                     if (params.cardId != null && params.format != null) {
-                        Log.d("FlowRecorder", "BARCODE_GENERATION_TRIGGER:{\"cardId\":\"${params.cardId}\",\"format\":\"${params.format}\",\"width\":${params.width},\"height\":${params.height},\"timestamp\":${System.currentTimeMillis()}}")
                         barcodeGenerationJob?.cancel() // Cancel any previous generation
                         barcodeGenerationJob = viewModelScope.launch(dispatcher) {
                             generateBarcode(
@@ -197,8 +193,6 @@ class LoyaltyCardEditActivityViewModel(
                             )
                         }
                     } else {
-                        Log.d("FlowRecorder", "BARCODE_GENERATION_SKIPPED:{\"cardId\":\"${params.cardId}\",\"format\":\"${params.format}\",\"reason\":\"invalid_data\",\"timestamp\":${System.currentTimeMillis()}}")
-                        // If data is insufficient, clear barcode display
                         updateBarcodeState(BarcodeState.None)
                     }
                 }
@@ -210,10 +204,7 @@ class LoyaltyCardEditActivityViewModel(
      */
     fun updateBarcodeDimensions(width: Int, height: Int) {
         if (width > 0 && height > 0) {
-            Log.d("FlowRecorder", "BARCODE_DIMENSIONS_UPDATE:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
             _barcodeDimensions.value = Pair(width, height)
-        } else {
-            Log.d("FlowRecorder", "BARCODE_DIMENSIONS_INVALID:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
         }
     }
 
@@ -300,8 +291,6 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     internal suspend fun generateBarcode(cardId: String, format: CatimaBarcode, width: Int, height: Int) {
-        val startTime = System.currentTimeMillis()
-        Log.d("FlowRecorder", "BARCODE_GENERATION_START:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"width\":$width,\"height\":$height,\"timestamp\":$startTime}")
         try {
             val result = withContext(Dispatchers.Default) {
                 BarcodeGenerator.generate(
@@ -327,13 +316,9 @@ class LoyaltyCardEditActivityViewModel(
             } else {
                 BarcodeState.Error
             }
-            val duration = System.currentTimeMillis() - startTime
-            Log.d("FlowRecorder", "BARCODE_GENERATION_COMPLETE:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"success\":${result.bitmap != null},\"duration_ms\":$duration,\"timestamp\":${System.currentTimeMillis()}}")
             updateBarcodeState(state)
         } catch (e: Exception) {
-            val duration = System.currentTimeMillis() - startTime
             Log.e(TAG, "Barcode generation failed", e)
-            Log.d("FlowRecorder", "BARCODE_GENERATION_ERROR:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"error\":\"${e.message}\",\"duration_ms\":$duration,\"timestamp\":${System.currentTimeMillis()}}")
             updateBarcodeState(BarcodeState.Error)
         }
     }
@@ -370,7 +355,6 @@ class LoyaltyCardEditActivityViewModel(
 
             result.fold(
                 onSuccess = { data ->
-                    // Apply bundle updates if present
                     if (bundle != null) {
                         data.loyaltyCard.updateFromBundle(bundle, false)
                     }
@@ -379,7 +363,6 @@ class LoyaltyCardEditActivityViewModel(
                     val storeName = data.loyaltyCard.store ?: ""
                     val headerColor = data.loyaltyCard.headerColor
 
-                    // Compute initial thumbnail state
                     val thumbnailState = computeThumbnailState(iconBitmap, storeName, headerColor)
 
                     // Update header color if derived from icon
@@ -422,7 +405,7 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
-        if (onResuming || onRestoring) return
+        if (onRestoring) return
 
         val state = _cardState.value
         if (state is CardLoadState.Success) {
@@ -542,9 +525,12 @@ class LoyaltyCardEditActivityViewModel(
 
     fun getImage(imageLocationType: ImageLocationType): Bitmap? {
         val state = _cardState.value
-        return if (state is CardLoadState.Success) {
-            state.images[imageLocationType] ?: loyaltyCard.getImageForImageLocationType(application, imageLocationType)
-        } else {
+        return if (state is CardLoadState.Success && state.images[imageLocationType]!=null)
+        {
+            state.images[imageLocationType]
+        }
+        else
+        {
             loyaltyCard.getImageForImageLocationType(application, imageLocationType)
         }
     }
@@ -566,13 +552,10 @@ class LoyaltyCardEditActivityViewModel(
                     val message = exception.message ?: "An unknown error occurred during save."
                     Log.e(TAG, "Failed to save card: $message")
 
-                    // Use SaveState.Error so Activity can respond appropriately
                     _saveState.value = SaveState.Error(
                         message = message,
                         messageResId = R.string.generic_error_please_retry
                     )
-
-                    // Also emit toast for immediate user feedback
                     _uiEvents.emit(UiEvent.ShowToastRes(R.string.generic_error_please_retry))
                 }
             )
@@ -598,10 +581,6 @@ class LoyaltyCardEditViewModelFactory(
     }
 }
 
-/**
- * Convenience factory for production use - creates CardRepository from database
- * and defaults to the main dispatcher.
- */
 fun createLoyaltyCardEditViewModelFactory(
     application: Application,
     database: SQLiteDatabase,
