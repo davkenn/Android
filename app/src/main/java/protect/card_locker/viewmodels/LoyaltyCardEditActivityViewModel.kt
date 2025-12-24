@@ -186,6 +186,7 @@ class LoyaltyCardEditActivityViewModel(
                 .collect { params ->
                     // Only attempt generation if we have valid card data and format.
                     if (params.cardId != null && params.format != null) {
+                        Log.d("FlowRecorder", "BARCODE_GENERATION_TRIGGER:{\"cardId\":\"${params.cardId}\",\"format\":\"${params.format}\",\"width\":${params.width},\"height\":${params.height},\"timestamp\":${System.currentTimeMillis()}}")
                         barcodeGenerationJob?.cancel() // Cancel any previous generation
                         barcodeGenerationJob = viewModelScope.launch(dispatcher) {
                             generateBarcode(
@@ -196,6 +197,7 @@ class LoyaltyCardEditActivityViewModel(
                             )
                         }
                     } else {
+                        Log.d("FlowRecorder", "BARCODE_GENERATION_SKIPPED:{\"cardId\":\"${params.cardId}\",\"format\":\"${params.format}\",\"reason\":\"invalid_data\",\"timestamp\":${System.currentTimeMillis()}}")
                         // If data is insufficient, clear barcode display
                         updateBarcodeState(BarcodeState.None)
                     }
@@ -208,7 +210,10 @@ class LoyaltyCardEditActivityViewModel(
      */
     fun updateBarcodeDimensions(width: Int, height: Int) {
         if (width > 0 && height > 0) {
+            Log.d("FlowRecorder", "BARCODE_DIMENSIONS_UPDATE:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
             _barcodeDimensions.value = Pair(width, height)
+        } else {
+            Log.d("FlowRecorder", "BARCODE_DIMENSIONS_INVALID:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
         }
     }
 
@@ -295,6 +300,8 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     internal suspend fun generateBarcode(cardId: String, format: CatimaBarcode, width: Int, height: Int) {
+        val startTime = System.currentTimeMillis()
+        Log.d("FlowRecorder", "BARCODE_GENERATION_START:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"width\":$width,\"height\":$height,\"timestamp\":$startTime}")
         try {
             val result = withContext(Dispatchers.Default) {
                 BarcodeGenerator.generate(
@@ -320,9 +327,13 @@ class LoyaltyCardEditActivityViewModel(
             } else {
                 BarcodeState.Error
             }
+            val duration = System.currentTimeMillis() - startTime
+            Log.d("FlowRecorder", "BARCODE_GENERATION_COMPLETE:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"success\":${result.bitmap != null},\"duration_ms\":$duration,\"timestamp\":${System.currentTimeMillis()}}")
             updateBarcodeState(state)
         } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
             Log.e(TAG, "Barcode generation failed", e)
+            Log.d("FlowRecorder", "BARCODE_GENERATION_ERROR:{\"cardId\":\"$cardId\",\"format\":\"$format\",\"error\":\"${e.message}\",\"duration_ms\":$duration,\"timestamp\":${System.currentTimeMillis()}}")
             updateBarcodeState(BarcodeState.Error)
         }
     }

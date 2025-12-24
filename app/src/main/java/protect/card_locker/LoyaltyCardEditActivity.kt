@@ -131,8 +131,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
 
-        // Initialize barcode layout to GONE until BarcodeState.Generated
-        binding.barcodeLayout.visibility = View.GONE
+        // Initialize barcode layout to INVISIBLE (not GONE) so it can be measured
+        // INVISIBLE: Hidden but still participates in layout (has dimensions)
+        // GONE: Removed from layout tree (always 0x0 dimensions)
+        binding.barcodeLayout.visibility = View.INVISIBLE
 
         cleanUpTempImages()
         binding.barcode.clipToOutline = true
@@ -1265,17 +1267,34 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     }
 
     private fun generateBarcode() {
-        if (binding.barcode.height == 0) {
+        val currentWidth = binding.barcode.width
+        val currentHeight = binding.barcode.height
+        Log.d("FlowRecorder", "ACTIVITY_GENERATE_BARCODE_CALLED:{\"width\":$currentWidth,\"height\":$currentHeight,\"timestamp\":${System.currentTimeMillis()}}")
+
+        if (binding.barcode.height == 0 || binding.barcode.width == 0) {
             // Wait for layout to get dimensions
+            Log.d("FlowRecorder", "WAITING_FOR_LAYOUT:{\"reason\":\"dimensions_zero\",\"timestamp\":${System.currentTimeMillis()}}")
             binding.barcode.viewTreeObserver.addOnGlobalLayoutListener(
                 object : ViewTreeObserver.OnGlobalLayoutListener {
                     override fun onGlobalLayout() {
-                        binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                        viewModel.updateBarcodeDimensions(binding.barcode.width, binding.barcode.height)
+                        val width = binding.barcode.width
+                        val height = binding.barcode.height
+                        Log.d("FlowRecorder", "LAYOUT_CALLBACK:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
+
+                        // Only remove listener and update dimensions if view is actually measured
+                        if (width > 0 && height > 0) {
+                            binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                            Log.d("FlowRecorder", "LAYOUT_COMPLETE:{\"width\":$width,\"height\":$height,\"timestamp\":${System.currentTimeMillis()}}")
+                            viewModel.updateBarcodeDimensions(width, height)
+                        } else {
+                            Log.d("FlowRecorder", "LAYOUT_STILL_ZERO:{\"width\":$width,\"height\":$height,\"keeping_listener\":true,\"timestamp\":${System.currentTimeMillis()}}")
+                            // Keep listener active - it will fire again when dimensions are ready
+                        }
                     }
                 }
             )
         } else {
+            Log.d("FlowRecorder", "USING_EXISTING_DIMENSIONS:{\"width\":$currentWidth,\"height\":$currentHeight,\"timestamp\":${System.currentTimeMillis()}}")
             viewModel.updateBarcodeDimensions(binding.barcode.width, binding.barcode.height)
         }
     }
@@ -1283,7 +1302,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {
-                binding.barcodeLayout.visibility = View.GONE
+                // Use INVISIBLE so view can still be measured for when barcode loads
+                binding.barcodeLayout.visibility = View.INVISIBLE
             }
             is BarcodeState.Generated -> {
                 binding.barcodeLayout.visibility = View.VISIBLE
@@ -1308,7 +1328,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
             is BarcodeState.Error -> {
-                binding.barcodeLayout.visibility = View.GONE
+                // Use INVISIBLE so layout can be measured for retry
+                binding.barcodeLayout.visibility = View.INVISIBLE
                 Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
             }
         }
