@@ -394,7 +394,6 @@ class LoyaltyCardEditActivityViewModel(
                         else -> R.string.generic_error_please_retry
                     }
 
-                    // Use State for error - Activity observes and responds
                     _cardState.value = CardLoadState.Error(
                         message = message,
                         messageResId = messageResId
@@ -405,7 +404,7 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
-        if (onRestoring) return
+  //      if (onRestoring) return
 
         val state = _cardState.value
         if (state is CardLoadState.Success) {
@@ -426,7 +425,6 @@ class LoyaltyCardEditActivityViewModel(
 
     fun onStoreNameChanged(newName: String) {
         modifyCard { store = newName.trim() }
-        // Recompute thumbnail state since letter tile depends on store name
         refreshThumbnailState()
     }
 

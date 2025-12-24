@@ -25,7 +25,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
 import android.view.ViewTreeObserver
 import android.widget.ArrayAdapter
@@ -62,7 +61,6 @@ import com.yalantis.ucrop.model.AspectRatio
 import protect.card_locker.databinding.LayoutChipChoiceBinding
 import protect.card_locker.databinding.LoyaltyCardEditActivityBinding
 import protect.card_locker.viewmodels.LoyaltyCardEditActivityViewModel
-import java.io.FileNotFoundException
 import java.io.IOException
 import java.math.BigDecimal
 import java.text.DateFormat
@@ -75,9 +73,7 @@ import androidx.core.net.toUri
 import androidx.core.view.allViews
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
@@ -650,14 +646,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 viewModel.setHeaderColor(color)
             }
 
-            if (data.currentTab == EditTab.CARD) {
-                generateBarcode()
-            }
-
+            if (data.currentTab == EditTab.CARD)  generateBarcode()
             viewModel.initDone = true
         }
 
-        // Always sync UI with current state (runs on every bind)
         data.images[ImageLocationType.front]?.let { binding.frontImage.setImageBitmap(it) }
             ?: binding.frontImage.setImageResource(R.drawable.ic_camera_white)
         data.images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
@@ -1134,7 +1126,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         var hasError = false
         if (binding.storeNameEdit.text.toString().trim().isEmpty()) {
             binding.storeNameEdit.error = getString(R.string.field_must_not_be_empty)
-            viewModel.selectTab(0) // Helper function to switch to the correct tab
+            viewModel.selectTab(0)
             binding.storeNameEdit.requestFocus()
             hasError = true
         }
@@ -1257,8 +1249,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     override fun onGlobalLayout() {
                         val width = binding.barcode.width
                         val height = binding.barcode.height
-
-                        // Only remove listener and update dimensions if view is actually measured
                         if (width > 0 && height > 0) {
                             binding.barcode.viewTreeObserver.removeOnGlobalLayoutListener(this)
                             viewModel.updateBarcodeDimensions(width, height)
@@ -1274,15 +1264,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {
-                // Smart visibility: GONE if no barcode type, INVISIBLE if barcode is loading
-                val currentState = viewModel.cardState.value
-                if (currentState is CardLoadState.Success && currentState.loyaltyCard.barcodeType != null) {
-                    // Card HAS barcode type, but barcode not generated yet → INVISIBLE (allows measurement)
-                    binding.barcodeLayout.visibility = View.INVISIBLE
-                } else {
-                    // Card has NO barcode type → GONE (reclaim space)
-                    binding.barcodeLayout.visibility = View.GONE
-                }
+                binding.barcodeLayout.visibility = View.GONE
             }
             is BarcodeState.Generated -> {
                 binding.barcodeLayout.visibility = View.VISIBLE
@@ -1307,13 +1289,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
             is BarcodeState.Error -> {
-                // Same smart visibility as None: INVISIBLE if barcode type exists (allows retry/measurement), GONE otherwise
-                val currentState = viewModel.cardState.value
-                if (currentState is CardLoadState.Success && currentState.loyaltyCard.barcodeType != null) {
-                    binding.barcodeLayout.visibility = View.INVISIBLE
-                } else {
-                    binding.barcodeLayout.visibility = View.GONE
-                }
+                binding.barcodeLayout.visibility = View.GONE
                 Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
             }
         }
