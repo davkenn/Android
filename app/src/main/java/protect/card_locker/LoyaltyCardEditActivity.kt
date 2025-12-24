@@ -131,9 +131,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         binding = LoyaltyCardEditActivityBinding.inflate(layoutInflater)
         setContentView(binding.getRoot())
 
-        // Initialize barcode layout to INVISIBLE (not GONE) so it can be measured
-        // INVISIBLE: Hidden but still participates in layout (has dimensions)
-        // GONE: Removed from layout tree (always 0x0 dimensions)
+        // Initialize barcode layout to INVISIBLE so it can be measured immediately if needed
+        // Will be updated to GONE in bindBarcodeToUi() if card has no barcode type
+        // INVISIBLE: Hidden but participates in layout (has dimensions for measurement)
+        // GONE: Removed from layout tree (reclaims space, 0x0 dimensions)
         binding.barcodeLayout.visibility = View.INVISIBLE
 
         cleanUpTempImages()
@@ -608,9 +609,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         updateEditText(binding.cardIdView, data.loyaltyCard.cardId)
 
         // Show "Same as Card ID" when barcodeId matches cardId or is null (meaning they're synced)
-        val barcodeIdDisplay = when {
-            data.loyaltyCard.barcodeId == null -> getString(R.string.sameAsCardId)
-            data.loyaltyCard.barcodeId == data.loyaltyCard.cardId -> getString(R.string.sameAsCardId)
+        val barcodeIdDisplay = when (data.loyaltyCard.barcodeId) {
+            null -> getString(R.string.sameAsCardId)
+            data.loyaltyCard.cardId -> getString(R.string.sameAsCardId)
             else -> data.loyaltyCard.barcodeId
         }
         updateEditText(binding.barcodeIdField, barcodeIdDisplay)
@@ -675,7 +676,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         data.images[ImageLocationType.back]?.let { binding.backImage.setImageBitmap(it) }
             ?: binding.backImage.setImageResource(R.drawable.ic_camera_white)
 
-        // Bind computed states - ViewModel owns logic, Activity just renders
         bindBarcodeToUi(data.barcodeState)
         bindThumbnailToUi(data.thumbnailState)
 
@@ -1302,8 +1302,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private fun bindBarcodeToUi(state: BarcodeState) {
         when (state) {
             is BarcodeState.None -> {
-                // Use INVISIBLE so view can still be measured for when barcode loads
-                binding.barcodeLayout.visibility = View.INVISIBLE
+                // Smart visibility: GONE if no barcode type, INVISIBLE if barcode is loading
+                val currentState = viewModel.cardState.value
+                if (currentState is CardLoadState.Success && currentState.loyaltyCard.barcodeType != null) {
+                    // Card HAS barcode type, but barcode not generated yet → INVISIBLE (allows measurement)
+                    binding.barcodeLayout.visibility = View.INVISIBLE
+                } else {
+                    // Card has NO barcode type → GONE (reclaim space)
+                    binding.barcodeLayout.visibility = View.GONE
+                }
             }
             is BarcodeState.Generated -> {
                 binding.barcodeLayout.visibility = View.VISIBLE
@@ -1328,8 +1335,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 }
             }
             is BarcodeState.Error -> {
-                // Use INVISIBLE so layout can be measured for retry
-                binding.barcodeLayout.visibility = View.INVISIBLE
+                // Same smart visibility as None: INVISIBLE if barcode type exists (allows retry/measurement), GONE otherwise
+                val currentState = viewModel.cardState.value
+                if (currentState is CardLoadState.Success && currentState.loyaltyCard.barcodeType != null) {
+                    binding.barcodeLayout.visibility = View.INVISIBLE
+                } else {
+                    binding.barcodeLayout.visibility = View.GONE
+                }
                 Toast.makeText(this, R.string.wrongValueForBarcodeType, Toast.LENGTH_LONG).show()
             }
         }

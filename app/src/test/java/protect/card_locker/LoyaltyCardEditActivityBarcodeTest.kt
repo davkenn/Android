@@ -213,4 +213,71 @@ class LoyaltyCardEditActivityBarcodeTest {
         val barcodeLayout = activity.findViewById<View>(R.id.barcodeLayout)
         assertThat(barcodeLayout.visibility).isEqualTo(View.GONE)
     }
+
+    @Test
+    fun `changing barcode type to No Barcode makes layout GONE and reclaims space`() {
+        // 1. ARRANGE: Create card with Aztec barcode
+        val cardId = DBHelper.insertLoyaltyCard(
+            dbHelper.writableDatabase,
+            "Store With Barcode",
+            "",
+            null,  // validFrom
+            null,  // expiry
+            BigDecimal.ZERO,
+            null,  // balanceType
+            "BARCODE123",  // cardId
+            null,  // barcodeId
+            CatimaBarcode.fromBarcode(BarcodeFormat.AZTEC),  // Has barcode type
+            Color.BLACK,
+            0,
+            null,
+            0
+        )
+
+        // Launch activity
+        val intent = Intent(ApplicationProvider.getApplicationContext(), LoyaltyCardEditActivity::class.java)
+        intent.putExtra(LoyaltyCardEditActivity.BUNDLE_ID, cardId.toInt())
+        intent.putExtra(LoyaltyCardEditActivity.BUNDLE_UPDATE, true)
+
+        val controller = Robolectric.buildActivity(LoyaltyCardEditActivity::class.java, intent)
+            .create().start().resume()
+
+        val activity = controller.get()
+
+        // Provide dimensions so barcode can generate
+        activity.viewModel.updateBarcodeDimensions(500, 200)
+
+        val barcodeLayout = activity.findViewById<View>(R.id.barcodeLayout)
+        val barcodeTypeField = activity.findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(R.id.barcodeTypeField)
+
+        // 2. Wait for barcode to become VISIBLE (with timeout)
+        Thread.sleep(300)  // Wait for debounce + generation
+        var barcodeVisible = false
+        val startTime = System.currentTimeMillis()
+        while (!barcodeVisible && System.currentTimeMillis() - startTime < 1500) {
+            repeat(10) { shadowOf(Looper.getMainLooper()).idle() }
+            barcodeVisible = barcodeLayout.visibility == View.VISIBLE
+            if (!barcodeVisible) Thread.sleep(50)
+        }
+
+        // Verify barcode is initially VISIBLE
+        assertThat(barcodeLayout.visibility).isEqualTo(View.VISIBLE)
+
+        // 3. ACT: Change barcode type to "No Barcode"
+        barcodeTypeField.setText(activity.getString(R.string.noBarcode), false)
+        shadowOf(Looper.getMainLooper()).idle()
+        Thread.sleep(100)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // 4. ASSERT: Barcode layout should be GONE (space reclaimed)
+        assertThat(barcodeLayout.visibility).isEqualTo(View.GONE)
+
+        // 5. Verify the ViewModel state updated
+        val currentState = activity.viewModel.cardState.value
+        assertThat(currentState).isInstanceOf(CardLoadState.Success::class.java)
+        if (currentState is CardLoadState.Success) {
+            assertThat(currentState.loyaltyCard.barcodeType).isNull()
+            assertThat(currentState.barcodeState).isInstanceOf(BarcodeState.None::class.java)
+        }
+    }
 }

@@ -166,7 +166,7 @@ class LoyaltyCardEditActivityViewModel(
     init {
         viewModelScope.launch(dispatcher) {
             combine(
-                _cardState, // Directly observe the mutable state flow
+                _cardState,
                 _barcodeDimensions
             ) { state, dims ->
                 if (state is CardLoadState.Success && dims != null) {
@@ -182,7 +182,7 @@ class LoyaltyCardEditActivityViewModel(
             }
                 .filterNotNull()
                 .distinctUntilChanged()
-                .debounce(200) // A short debounce is sufficient here.
+                .debounce(200)
                 .collect { params ->
                     // Only attempt generation if we have valid card data and format.
                     if (params.cardId != null && params.format != null) {
