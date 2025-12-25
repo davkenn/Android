@@ -76,6 +76,9 @@ sealed interface UiEvent {
 
     /** Fatal error - Activity should show toast and finish */
     data class FatalError(@StringRes val messageResId: Int) : UiEvent
+
+    /** Request Activity to reformat balance field with new currency format */
+    data class ReformatBalance(val balance: BigDecimal?, val balanceType: Currency?) : UiEvent
 }
 
 /**
@@ -457,6 +460,35 @@ class LoyaltyCardEditActivityViewModel(
     fun setExpiry(expiry: Date?) = modifyCard { setExpiry(expiry) }
     fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
     fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
+
+    /** Currency symbol to Currency lookup map */
+    private val currencies: Map<String, Currency> by lazy {
+        Currency.getAvailableCurrencies().associateBy { it.symbol }
+    }
+
+    /**
+     * Handles balance currency field changes.
+     * Parses the currency symbol, updates balance type, and emits reformat event.
+     */
+    fun onBalanceCurrencyChanged(currencySymbol: String) {
+        if (onRestoring) return
+
+        val currency: Currency? = if (currencySymbol == application.getString(R.string.points)) {
+            null
+        } else {
+            currencies[currencySymbol]
+        }
+
+        setBalanceType(currency)
+
+        // Emit event to reformat balance field with new currency format
+        val currentBalance = loyaltyCard.balance
+        if (currentBalance != null) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiEvent.ReformatBalance(currentBalance, currency))
+            }
+        }
+    }
 
     fun validateBalanceChanged(balanceString: String) {
         if (onRestoring) return

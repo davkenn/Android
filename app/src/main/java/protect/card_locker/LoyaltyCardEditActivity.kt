@@ -206,17 +206,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.balanceCurrencyField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val currency: Currency? =
-                    if (s.toString() == getString(R.string.points)) null else currencies[s.toString()]
-                viewModel.setBalanceType(currency)
-                if (viewModel.loyaltyCard.balance != null && !viewModel.onRestoring) {
-                    binding.balanceField.setText(
-                        Utils.formatBalanceWithoutCurrencySymbol(
-                            viewModel.loyaltyCard.balance,
-                            currency
-                        )
-                    )
-                }
+                viewModel.onBalanceCurrencyChanged(s.toString())
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -471,6 +461,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Toast.LENGTH_LONG
                         ).show()
                         finish()
+                    }
+
+                    is UiEvent.ReformatBalance -> {
+                        binding.balanceField.setText(
+                            Utils.formatBalanceWithoutCurrencySymbol(
+                                event.balance,
+                                event.balanceType
+                            )
+                        )
                     }
                 }
             }
