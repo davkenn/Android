@@ -404,7 +404,7 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
-  //      if (onRestoring) return
+        if (onRestoring) return
 
         val state = _cardState.value
         if (state is CardLoadState.Success) {

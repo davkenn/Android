@@ -158,7 +158,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (viewModel.onRestoring) return
                 val storeName = s.toString().trim()
                 viewModel.onStoreNameChanged(storeName)
                 binding.storeNameEdit.error = if (storeName.isEmpty()) {
@@ -190,7 +189,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         setMaterialDatePickerResultListener()
 
         binding.balanceField.setOnFocusChangeListener { _, hasFocus: Boolean ->
-            if (!hasFocus && !viewModel.onRestoring) {
+            if (!hasFocus) {
                 if (binding.balanceField.text.toString().isEmpty()) {
                     viewModel.setBalance(BigDecimal.valueOf(0))
                 }
@@ -286,7 +285,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (viewModel.onRestoring) return
 
                 when (s.toString()) {
                     menuSameAsCardId -> onSyncWithCardIdSelected()
