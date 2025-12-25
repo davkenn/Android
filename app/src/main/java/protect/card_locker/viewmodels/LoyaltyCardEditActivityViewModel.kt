@@ -28,6 +28,7 @@ import protect.card_locker.Group
 import protect.card_locker.LoyaltyCard
 import protect.card_locker.LoyaltyCardField
 import java.math.BigDecimal
+import java.text.ParseException
 import java.util.Currency
 import java.util.Date
 import protect.card_locker.ImageLocationType
@@ -457,6 +458,20 @@ class LoyaltyCardEditActivityViewModel(
     fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
     fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
 
+    fun validateBalanceChanged(balanceString: String) {
+        if (onRestoring) return
+
+        viewModelScope.launch {
+            try {
+                val balance = Utils.parseBalance(balanceString, loyaltyCard.balanceType)
+                setBalance(balance)
+                _fieldErrorEvents.emit(LoyaltyCardField.balance to null)
+            } catch (e: ParseException) {
+                _fieldErrorEvents.emit(LoyaltyCardField.balance to R.string.balanceParsingFailed)
+            }
+        }
+    }
+
     fun setBarcodeId(barcodeId: String?) {
         modifyCard { setBarcodeId(barcodeId) }
 
@@ -474,6 +489,30 @@ class LoyaltyCardEditActivityViewModel(
         // This bypasses the debounced reactive flow to provide instant feedback
         if (barcodeType == null) {
             updateBarcodeState(BarcodeState.None)
+        }
+    }
+
+    /**
+     * Validates and sets barcode type from dropdown selection.
+     * Handles "No barcode" selection, valid types, and unsupported types.
+     * Emits UiEvent.ShowToastRes for unsupported barcode type errors.
+     */
+    fun validateBarcodeTypeChanged(barcodeTypeName: String) {
+        // Check if "No barcode" was explicitly selected
+        if (barcodeTypeName == application.getString(R.string.noBarcode)) {
+            setBarcodeType(null)
+            return
+        }
+
+        try {
+            val barcode = CatimaBarcode.fromPrettyName(barcodeTypeName)
+            setBarcodeType(barcode)
+        } catch (_: IllegalArgumentException) {
+            // Unsupported barcode type
+            setBarcodeType(null)
+            viewModelScope.launch {
+                _uiEvents.emit(UiEvent.ShowToastRes(R.string.unsupportedBarcodeType))
+            }
         }
     }
 

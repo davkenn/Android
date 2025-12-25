@@ -200,18 +200,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.balanceField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (viewModel.onRestoring) return
-                try {
-                    val balance =
-                        Utils.parseBalance(s.toString(), viewModel.loyaltyCard.balanceType)
-                    viewModel.setBalance(balance)
-                    binding.balanceField.error = null
-                    validBalance = true
-                } catch (e: ParseException) {
-                    e.printStackTrace()
-                    binding.balanceField.error = getString(R.string.balanceParsingFailed)
-                    validBalance = false
-                }
+                viewModel.validateBalanceChanged(s.toString())
             }
         })
 
@@ -295,28 +284,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val bctype = s.toString()
-
-                // Check if "No barcode" was explicitly selected (valid option)
-                if (bctype == getString(R.string.noBarcode)) {
-                    viewModel.setBarcodeType(null)
-                    return
-                }
-
-                try {
-                    viewModel.setBarcodeType(CatimaBarcode.fromPrettyName(bctype))
-                    binding.barcodeLayout.visibility = View.VISIBLE
-                    generateBarcode()
-
-                } catch (_: IllegalArgumentException) {
-                    // Only show error for truly unsupported barcode types
-                    viewModel.setBarcodeType(null)
-                    Toast.makeText(
-                        this@LoyaltyCardEditActivity,
-                        getString(R.string.unsupportedBarcodeType),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                viewModel.validateBarcodeTypeChanged(s.toString())
+                generateBarcode() // Ensure dimensions are set for reactive barcode generation
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -514,6 +483,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     // Clear all field errors first (only one error shows at a time)
                     binding.storeNameEdit.error = null
                     binding.cardIdView.error = null
+                    binding.balanceField.error = null
 
                     // Set the new error on the specified field
                     if (errorResId != null) {
@@ -521,8 +491,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         when (field) {
                             LoyaltyCardField.store -> binding.storeNameEdit.error = errorMessage
                             LoyaltyCardField.cardId -> binding.cardIdView.error = errorMessage
+                            LoyaltyCardField.balance -> binding.balanceField.error = errorMessage
                             else -> {} // Other fields not yet implemented
                         }
+                    }
+
+                    // Update validBalance flag when balance field is validated
+                    if (field == LoyaltyCardField.balance) {
+                        validBalance = (errorResId == null)
                     }
                 }
         }
