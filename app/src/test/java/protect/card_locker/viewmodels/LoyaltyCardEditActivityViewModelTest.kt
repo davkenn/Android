@@ -128,4 +128,96 @@ class LoyaltyCardEditActivityViewModelTest {
         assertEquals("Costco", viewModel.loyaltyCard.store)
         assertEquals(true, viewModel.hasChanged)
     }
+
+    @Test
+    fun testValidateStoreNameChanged_EmptyString_UpdatesCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        viewModel.validateStoreNameChanged("")
+        advanceUntilIdle()
+
+        // Validate that the card was updated
+        assertEquals("", viewModel.loyaltyCard.store)
+        assertEquals(true, viewModel.hasChanged)
+    }
+
+    @Test
+    fun testValidateStoreNameChanged_NonEmptyString_UpdatesCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        viewModel.validateStoreNameChanged("Costco")
+        advanceUntilIdle()
+
+        // Validate that the card was updated
+        assertEquals("Costco", viewModel.loyaltyCard.store)
+        assertEquals(true, viewModel.hasChanged)
+    }
+
+    @Test
+    fun testValidateCardIdChanged_EmptyString_UpdatesCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        viewModel.validateCardIdChanged("")
+        advanceUntilIdle()
+
+        // Validate that the card was updated
+        assertEquals("", viewModel.loyaltyCard.cardId)
+        assertEquals(true, viewModel.hasChanged)
+    }
+
+    @Test
+    fun testValidateCardIdChanged_NonEmptyString_UpdatesCard() = runTest(testDispatcher) {
+        whenever(cardRepository.loadCardData(0, null, false)).thenReturn(
+            Result.success(
+                LoadedCardData(
+                    loyaltyCard = LoyaltyCard(),
+                    allGroups = emptyList(),
+                    loyaltyCardGroups = emptyList()
+                )
+            )
+        )
+
+        viewModel.loadCard(cardId = 0)
+        advanceUntilIdle()
+
+        viewModel.validateCardIdChanged("12345")
+        advanceUntilIdle()
+
+        // Validate that the card was updated
+        assertEquals("12345", viewModel.loyaltyCard.cardId)
+        assertEquals(true, viewModel.hasChanged)
+    }
 }

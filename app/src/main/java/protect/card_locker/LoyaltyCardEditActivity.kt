@@ -158,11 +158,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                val storeName = s.toString().trim()
-                viewModel.onStoreNameChanged(storeName)
-                binding.storeNameEdit.error = if (storeName.isEmpty()) {
-                    getString(R.string.field_must_not_be_empty)
-                } else null
+                viewModel.validateStoreNameChanged(s.toString().trim())
             }
         })
 
@@ -268,10 +264,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (viewModel.onRestoring) return
-                viewModel.onCardIdChanged(s.toString())
-                binding.cardIdView.error = if (s.isEmpty()) {
-                    getString(R.string.field_must_not_be_empty)
-                } else null
+                viewModel.validateCardIdChanged(s.toString())
             }
         })
 
@@ -457,12 +450,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             Log.d(TAG, "Card data loaded successfully")
                             bindCardToUi(state)
                         }
-
-                        is CardLoadState.Error -> {
-                            // Fatal error loading card data - show error and exit
-                            Toast.makeText(this@LoyaltyCardEditActivity, state.messageResId, Toast.LENGTH_LONG).show()
-                            finish()
-                        }
                     }
                 }
         }
@@ -474,11 +461,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                 when (state) {
                     is SaveState.Idle -> binding.fabSave.isEnabled = true
                     is SaveState.Saving -> binding.fabSave.isEnabled = false
-                    is SaveState.Error -> {
-                        // Save failed - show error and let user retry
-                        Toast.makeText(this@LoyaltyCardEditActivity, state.messageResId, Toast.LENGTH_LONG).show()
-                        binding.fabSave.isEnabled = true
-                    }
                 }
             }
         }
@@ -512,8 +494,37 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         ).show()
                         finish()
                     }
+
+                    is UiEvent.FatalError -> {
+                        Toast.makeText(
+                            this@LoyaltyCardEditActivity,
+                            event.messageResId,
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                    }
                 }
             }
+        }
+
+        lifecycleScope.launch {
+            viewModel.fieldErrorEvents
+                .monitor("fieldErrorEvents")
+                .collect { (field, errorResId) ->
+                    // Clear all field errors first (only one error shows at a time)
+                    binding.storeNameEdit.error = null
+                    binding.cardIdView.error = null
+
+                    // Set the new error on the specified field
+                    if (errorResId != null) {
+                        val errorMessage = getString(errorResId)
+                        when (field) {
+                            LoyaltyCardField.store -> binding.storeNameEdit.error = errorMessage
+                            LoyaltyCardField.cardId -> binding.cardIdView.error = errorMessage
+                            else -> {} // Other fields not yet implemented
+                        }
+                    }
+                }
         }
     }
 

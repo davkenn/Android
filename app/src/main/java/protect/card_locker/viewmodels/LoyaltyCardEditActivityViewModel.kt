@@ -26,6 +26,7 @@ import protect.card_locker.CardRepository
 import protect.card_locker.CatimaBarcode
 import protect.card_locker.Group
 import protect.card_locker.LoyaltyCard
+import protect.card_locker.LoyaltyCardField
 import java.math.BigDecimal
 import java.util.Currency
 import java.util.Date
@@ -39,12 +40,6 @@ import protect.card_locker.R
 sealed interface SaveState {
     object Idle : SaveState
     object Saving : SaveState
-
-    /** Save failed - user can retry */
-    data class Error(
-        val message: String,
-        @StringRes val messageResId: Int = R.string.generic_error_please_retry
-    ) : SaveState
 }
 
 enum class EditTab {
@@ -64,18 +59,11 @@ sealed interface CardLoadState {
         val currentTab: EditTab = EditTab.CARD,
         val version: Long = 0
     ) : CardLoadState
-
-    /** Fatal error loading card - Activity should show error and finish */
-    data class Error(
-        val message: String,
-        @StringRes val messageResId: Int = R.string.noCardExistsError
-    ) : CardLoadState
 }
 
 /**
  * One-time UI events (side effects).
- * Use for toasts and navigation - NOT for errors that affect rendering.
- * Errors that affect UI should be in State (CardLoadState.Error, SaveState.Error, etc.)
+ * Use for toasts, navigation, and fatal errors that cause Activity to finish.
  */
 sealed interface UiEvent {
 
@@ -84,6 +72,9 @@ sealed interface UiEvent {
     data class ShowToastRes(@StringRes val messageResId: Int) : UiEvent
 
     object SaveSuccess : UiEvent
+
+    /** Fatal error - Activity should show toast and finish */
+    data class FatalError(@StringRes val messageResId: Int) : UiEvent
 }
 
 /**
@@ -147,6 +138,9 @@ class LoyaltyCardEditActivityViewModel(
 
     private val _uiEvents = MutableSharedFlow<UiEvent>(replay = 0)
     val uiEvents = _uiEvents.asSharedFlow()
+
+    private val _fieldErrorEvents = MutableSharedFlow<Pair<LoyaltyCardField, Int?>>(replay = 0)
+    val fieldErrorEvents = _fieldErrorEvents.asSharedFlow()
 
     var tempStoredOldBarcodeValue: String? = null
 
@@ -394,10 +388,9 @@ class LoyaltyCardEditActivityViewModel(
                         else -> R.string.generic_error_please_retry
                     }
 
-                    _cardState.value = CardLoadState.Error(
-                        message = message,
-                        messageResId = messageResId
-                    )
+                    viewModelScope.launch {
+                        _uiEvents.emit(UiEvent.FatalError(messageResId))
+                    }
                 }
             )
         }
@@ -436,6 +429,26 @@ class LoyaltyCardEditActivityViewModel(
                 barcodeId = newCardId
             }
             cardId = newCardId
+        }
+    }
+
+    fun validateStoreNameChanged(storeName: String) {
+        onStoreNameChanged(storeName)
+        viewModelScope.launch {
+            val errorResId = if (storeName.trim().isEmpty()) {
+                R.string.field_must_not_be_empty
+            } else null
+            _fieldErrorEvents.emit(LoyaltyCardField.store to errorResId)
+        }
+    }
+
+    fun validateCardIdChanged(cardId: String) {
+        onCardIdChanged(cardId)
+        viewModelScope.launch {
+            val errorResId = if (cardId.isEmpty()) {
+                R.string.field_must_not_be_empty
+            } else null
+            _fieldErrorEvents.emit(LoyaltyCardField.cardId to errorResId)
         }
     }
 
@@ -550,10 +563,7 @@ class LoyaltyCardEditActivityViewModel(
                     val message = exception.message ?: "An unknown error occurred during save."
                     Log.e(TAG, "Failed to save card: $message")
 
-                    _saveState.value = SaveState.Error(
-                        message = message,
-                        messageResId = R.string.generic_error_please_retry
-                    )
+                    _saveState.value = SaveState.Idle
                     _uiEvents.emit(UiEvent.ShowToastRes(R.string.generic_error_please_retry))
                 }
             )
