@@ -5,6 +5,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
+import org.junit.Ignore
 import org.junit.Test
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -27,6 +28,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * 2. Replace placeholder types with your actual types
  * 3. Run the test!
  */
+@Ignore("Template - copy and adapt, don't run directly")
 @OptIn(ExperimentalCoroutinesApi::class)
 class FlowTestTemplate {
 

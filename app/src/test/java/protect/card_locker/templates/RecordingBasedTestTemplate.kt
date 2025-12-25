@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 import org.robolectric.shadows.ShadowLog
 
@@ -35,6 +36,7 @@ import org.robolectric.shadows.ShadowLog
  * 3. Copy this file and adapt to your recorded scenario
  * 4. Replace RecordingTemplate_YourRecordedFixture with your actual fixture name
  */
+@Ignore("Template - copy and adapt, don't run directly")
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordingBasedTestTemplate {
 

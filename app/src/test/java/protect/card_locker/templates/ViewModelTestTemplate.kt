@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,6 +43,7 @@ import org.robolectric.shadows.ShadowLog
  * 4. Inject test dispatcher into ViewModel constructor
  * 5. Verify state with StateFlow.value assertions
  */
+@Ignore("Template - copy and adapt, don't run directly")
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ViewModelTestTemplate {

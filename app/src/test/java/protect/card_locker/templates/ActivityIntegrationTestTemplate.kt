@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -39,6 +40,7 @@ import protect.card_locker.R
  * 2. Replace YourActivity, YourViewModel, YourState with your types
  * 3. Adapt the test patterns to your specific Activity
  */
+@Ignore("Template - copy and adapt, don't run directly")
 @RunWith(RobolectricTestRunner::class)
 class ActivityIntegrationTestTemplate {
 
