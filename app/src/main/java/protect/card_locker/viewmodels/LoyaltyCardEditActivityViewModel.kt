@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import protect.card_locker.BarcodeGenerator
 import protect.card_locker.CardRepository
 import protect.card_locker.CatimaBarcode
+import protect.card_locker.CurrencyHelper
 import protect.card_locker.Group
 import protect.card_locker.LoyaltyCard
 import protect.card_locker.LoyaltyCardField
@@ -461,11 +462,6 @@ class LoyaltyCardEditActivityViewModel(
     fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
     fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
 
-    /** Currency symbol to Currency lookup map */
-    private val currencies: Map<String, Currency> by lazy {
-        Currency.getAvailableCurrencies().associateBy { it.symbol }
-    }
-
     /**
      * Handles balance currency field changes.
      * Parses the currency symbol, updates balance type, and emits reformat event.
@@ -476,7 +472,7 @@ class LoyaltyCardEditActivityViewModel(
         val currency: Currency? = if (currencySymbol == application.getString(R.string.points)) {
             null
         } else {
-            currencies[currencySymbol]
+            CurrencyHelper.fromSymbol(currencySymbol)
         }
 
         setBalanceType(currency)

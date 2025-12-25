@@ -98,8 +98,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
     private lateinit var binding: LoyaltyCardEditActivityBinding
     var confirmExitDialog: AlertDialog? = null
     var validBalance: Boolean = true
-    lateinit var currencies: Map<String, Currency>
-    lateinit var currencySymbols: Map<String, String>
     private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri>
     private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var mCardIdAndBarCodeEditorLauncher: ActivityResultLauncher<Intent>
@@ -151,10 +149,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.loadCard(cardId, importUri, isDuplicate, intent.extras)
             viewModel.initialized = true
         }
-
-        val availableCurrencies = Currency.getAvailableCurrencies()
-        currencies = availableCurrencies.associateBy { it.symbol }
-        currencySymbols = availableCurrencies.associate { it.currencyCode to it.symbol }
 
         binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
@@ -210,7 +204,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
 
             override fun afterTextChanged(s: Editable?) {
-                val currencyList = ArrayList(currencies.keys)
+                val currencyList = ArrayList(CurrencyHelper.symbols)
                 currencyList.sortWith(compareBy({ !it.matches("^[^a-zA-Z]*$".toRegex()) }, { it }))
 
                 // Sort locale currencies on top
@@ -1330,8 +1324,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun getCurrencySymbol(currency: Currency): String {
         // Workaround for Android bug where the output of Currency.getSymbol() changes.
-        // TODO: Java version has no fallback - returns null if not found. Review if fallback reintroduces bug.
-        return currencySymbols[currency.currencyCode] ?: currency.symbol
+        return CurrencyHelper.getSymbol(currency)
     }
 
     enum class ImageOperation(
