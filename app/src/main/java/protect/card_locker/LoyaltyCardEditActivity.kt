@@ -73,7 +73,11 @@ import androidx.core.net.toUri
 import androidx.core.view.allViews
 import androidx.core.view.isEmpty
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import protect.card_locker.viewmodels.BarcodeState
 import protect.card_locker.viewmodels.CardLoadState
@@ -97,7 +101,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private lateinit var binding: LoyaltyCardEditActivityBinding
     var confirmExitDialog: AlertDialog? = null
-    var validBalance: Boolean = true
     private var barcodeIdLastValue: String? = null
     private lateinit var mPhotoTakerLauncher: ActivityResultLauncher<Uri>
     private lateinit var mPhotoPickerLauncher: ActivityResultLauncher<Intent>
@@ -150,18 +153,9 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             viewModel.initialized = true
         }
 
-        binding.storeNameEdit.addTextChangedListener(object : SimpleTextWatcher() {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.validateStoreNameChanged(s.toString().trim())
-            }
-        })
+        setMaterialDatePickerResultListener()
 
-        binding.noteEdit.addTextChangedListener(object : SimpleTextWatcher() {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.onNoteChanged(s.toString())
-            }
-        })
-
+        // Date fields - keep in onCreate since they use repeatOnLifecycle(STARTED) protection
         addDateFieldTextChangedListener(
             binding.validFromField,
             R.string.anyDate,
@@ -176,33 +170,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             LoyaltyCardField.expiry
         )
 
-        setMaterialDatePickerResultListener()
-
-        binding.balanceField.setOnFocusChangeListener { _, hasFocus: Boolean ->
-            if (!hasFocus) {
-                if (binding.balanceField.text.toString().isEmpty()) {
-                    viewModel.setBalance(BigDecimal.valueOf(0))
-                }
-                binding.balanceField.setText(
-                    Utils.formatBalanceWithoutCurrencySymbol(
-                        viewModel.loyaltyCard.balance,
-                        viewModel.loyaltyCard.balanceType
-                    )
-                )
-            }
-        }
-
-        binding.balanceField.addTextChangedListener(object : SimpleTextWatcher() {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.validateBalanceChanged(s.toString())
-            }
-        })
-
+        // Currency field - Keep separate listener for dropdown UI updates
         binding.balanceCurrencyField.addTextChangedListener(object : SimpleTextWatcher() {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.onBalanceCurrencyChanged(s.toString())
-            }
-
             override fun afterTextChanged(s: Editable?) {
                 val currencyList = ArrayList(CurrencyHelper.symbols)
                 currencyList.sortWith(compareBy({ !it.matches("^[^a-zA-Z]*$".toRegex()) }, { it }))
@@ -223,6 +192,7 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         })
 
+        // Card ID - Keep beforeTextChanged for old barcode value tracking
         binding.cardIdView.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 if (viewModel.initDone && !viewModel.onRestoring) {
@@ -234,21 +204,13 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                     }
                 }
             }
-
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (viewModel.onRestoring) return
-                viewModel.validateCardIdChanged(s.toString())
-            }
         })
 
+        // Barcode ID - Keep beforeTextChanged and afterTextChanged for UI side effects
         binding.barcodeIdField.addTextChangedListener(object : SimpleTextWatcher() {
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
                 // Track previous value for "Set custom..." dialog restoration
                 barcodeIdLastValue = s.toString()
-            }
-
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.onBarcodeIdFieldChanged(s.toString())
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -261,11 +223,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         })
 
         binding.barcodeTypeField.addTextChangedListener(object : SimpleTextWatcher() {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                viewModel.validateBarcodeTypeChanged(s.toString())
-                generateBarcode()
-            }
-
             override fun afterTextChanged(s: Editable?) {
                 binding.barcodeTypeField.setAdapter(
                     createDropdownAdapter(
@@ -385,6 +342,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         })
 
         lifecycleScope.launch {
+            var isFirstBind = true
+
             viewModel.cardState
                 .monitor("cardState")  // JSON logging for Flow recording
                 .collectLatest { state ->
@@ -396,6 +355,14 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                         is CardLoadState.Success -> {
                             Log.d(TAG, "Card data loaded successfully")
                             bindCardToUi(state)
+
+                            // Set up listeners AFTER first bind completes
+                            // All listeners check onRestoring or use emitInitialValue=false to prevent loops
+                            if (isFirstBind) {
+                                setupTextFieldListeners()
+                                isFirstBind = false
+                                Log.d(TAG, "Text field listeners initialized")
+                            }
                         }
                     }
                 }
@@ -459,6 +426,10 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             )
                         )
                     }
+
+                    is UiEvent.ShowCustomBarcodeDialog -> {
+                        showCustomBarcodeDialog()
+                    }
                 }
             }
         }
@@ -481,8 +452,6 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
                             else -> {} // Other fields not yet implemented
                         }
                     }
-
-                    if (field == LoyaltyCardField.balance) validBalance = (errorResId == null)
                 }
         }
     }
@@ -552,13 +521,112 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
 
     private fun getCurrentImageOperation(): ImageOperation? = viewModel.currentImageOperation
 
+    /**
+     * Sets up text field Flow listeners AFTER initial card data has been bound to the UI.
+     * This prevents initialization race conditions where setText() triggers listeners
+     * before the card is fully loaded.
+     */
+    private fun setupTextFieldListeners() {
+        Log.d(TAG, "=== setupTextFieldListeners CALLED ===")
+
+        // Balance field focus listener - format display when focus is lost
+        binding.balanceField.setOnFocusChangeListener { _, hasFocus: Boolean ->
+            Log.d(TAG, "Balance focus changed: hasFocus=$hasFocus, onRestoring=${viewModel.onRestoring}")
+
+            if (!hasFocus && !viewModel.onRestoring) {
+                Log.d(TAG, "Balance lost focus - formatting display")
+                // Just format and display - don't mutate ViewModel state
+                // The empty=0 logic is now handled in ViewModel.validateBalanceChanged()
+                // Use ViewModel state instead of loyaltyCard directly
+                viewModel.balance.value?.let { balance ->
+                    binding.balanceField.setText(
+                        Utils.formatBalanceWithoutCurrencySymbol(
+                            balance,
+                            viewModel.balanceType.value
+                        )
+                    )
+                }
+            }
+        }
+
+        // Store name validation with trimming and debouncing
+        binding.storeNameEdit.observeTextChanges(
+            lifecycleOwner = this,
+            debounceMs = 300,
+            trim = true,
+            emitInitialValue = false
+        ) { storeName ->
+            viewModel.validateStoreNameChanged(storeName)
+        }
+
+        // Note field - no debounce needed, no trimming
+        binding.noteEdit.observeTextChanges(
+            lifecycleOwner = this,
+            trim = false,
+            emitInitialValue = false
+        ) { note ->
+            viewModel.onNoteChanged(note)
+        }
+
+        // Balance validation with debouncing
+        binding.balanceField.observeTextChanges(
+            lifecycleOwner = this,
+            debounceMs = 300,
+            emitInitialValue = false
+        ) { balance ->
+            viewModel.validateBalanceChanged(balance)
+        }
+
+        // Currency field - Flow for ViewModel updates
+        binding.balanceCurrencyField.observeTextChanges(
+            lifecycleOwner = this,
+            emitInitialValue = false
+        ) { currency ->
+            viewModel.onBalanceCurrencyChanged(currency)
+        }
+
+        // Card ID validation - Flow for ViewModel updates
+        binding.cardIdView.observeTextChanges(
+            lifecycleOwner = this,
+            emitInitialValue = false
+        ) { cardId ->
+            if (!viewModel.onRestoring) {
+                viewModel.validateCardIdChanged(cardId)
+            }
+        }
+
+        // Barcode ID - Flow for ViewModel updates
+        binding.barcodeIdField.observeTextChanges(
+            lifecycleOwner = this,
+            emitInitialValue = false
+        ) { barcodeId ->
+            viewModel.onBarcodeIdFieldChanged(barcodeId)
+        }
+
+        // Barcode type - Flow for ViewModel updates and barcode generation
+        binding.barcodeTypeField.observeTextChanges(
+            lifecycleOwner = this,
+            emitInitialValue = false
+        ) { barcodeType ->
+            viewModel.validateBarcodeTypeChanged(barcodeType)
+            generateBarcode()
+        }
+    }
+
     private fun bindCardToUi(data: CardLoadState.Success) {
+        Log.d(TAG, "=== bindCardToUi CALLED === Stack trace:")
+        Log.d(TAG, Thread.currentThread().stackTrace.take(10).joinToString("\n"))
+
+        // Initialize ViewModel StateFlows first (doesn't trigger modifyCard)
+        viewModel.initializeFromCard(data.loyaltyCard)
+
         viewModel.onRestoring = true
-        updateEditText(binding.storeNameEdit, data.loyaltyCard.store)
+        // Update UI from ViewModel state
+        updateEditText(binding.storeNameEdit, viewModel.storeName.value)
         updateEditText(binding.noteEdit, data.loyaltyCard.note)
         formatDateField(this, binding.validFromField, data.loyaltyCard.validFrom)
         formatDateField(this, binding.expiryField, data.loyaltyCard.expiry)
-        updateEditText(binding.cardIdView, data.loyaltyCard.cardId)
+        updateEditText(binding.cardIdView, viewModel.cardId.value)
 
         // Show "Same as Card ID" when barcodeId matches cardId or is null (meaning they're synced)
         val barcodeIdDisplay = when (data.loyaltyCard.barcodeId) {
@@ -568,17 +636,15 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         }
         updateEditText(binding.barcodeIdField, barcodeIdDisplay)
         updateEditText(binding.barcodeTypeField, data.loyaltyCard.barcodeType?.prettyName() ?: getString(R.string.noBarcode))
-        // We set the balance here (with onResuming/onRestoring == true) to prevent formatBalanceCurrencyField() from setting it (via onTextChanged),
-        // which can cause issues when switching locale because it parses the balance and e.g. the decimal separator may have changed.
-        formatBalanceCurrencyField(data.loyaltyCard.balanceType)
-        val balance = data.loyaltyCard.balance ?: BigDecimal("0")
+        // Format balance from ViewModel state
+        formatBalanceCurrencyField(viewModel.balanceType.value)
+        val balance = viewModel.balance.value ?: BigDecimal("0")
         binding.balanceField.setText(
             Utils.formatBalanceWithoutCurrencySymbol(
                 balance,
-                data.loyaltyCard.balanceType
+                viewModel.balanceType.value
             )
         )
-        validBalance = true
         Log.d(TAG, "Setting balance to $balance")
 
         if (binding.groupChips.isEmpty()) {
@@ -669,34 +735,44 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
         @StringRes chooseDateOptionStringId: Int,
         loyaltyCardField: LoyaltyCardField
     ) {
+        // Flow-based date field handling with previous value tracking
+        // Uses repeatOnLifecycle to prevent premature collection during Activity initialization
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dateField.textChangesWithPrevious()
+                    .collect { (lastValue, currentValue) ->
+                        // Skip if we're restoring/binding data to prevent loops
+                        if (viewModel.onRestoring) return@collect
+
+                        when {
+                            // User selected default option (e.g., "Any Date" or "Never")
+                            currentValue == getString(defaultOptionStringId) -> {
+                                dateField.tag = null
+                                when (loyaltyCardField) {
+                                    LoyaltyCardField.validFrom -> viewModel.setValidFrom(null)
+                                    LoyaltyCardField.expiry -> viewModel.setExpiry(null)
+                                    else -> throw AssertionError("Unexpected field: $loyaltyCardField")
+                                }
+                            }
+                            // User selected "Choose Date" option - show date picker
+                            currentValue == getString(chooseDateOptionStringId) -> {
+                                if (lastValue != getString(chooseDateOptionStringId)) {
+                                    dateField.setText(lastValue)
+                                }
+                                showDatePicker(
+                                    loyaltyCardField,
+                                    dateField.tag as? Date,
+                                    if (loyaltyCardField == LoyaltyCardField.expiry) binding.validFromField.tag as? Date else null, // if the expiry date is being set, set date picker's minDate to the 'valid from' date
+                                    if (loyaltyCardField == LoyaltyCardField.validFrom) binding.expiryField.tag as? Date else null // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
+                                )
+                            }
+                        }
+                    }
+            }
+        }
+
+        // Keep separate listener for dropdown UI updates
         dateField.addTextChangedListener(object : SimpleTextWatcher() {
-            var lastValue: String? = null
-
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
-                lastValue = s.toString()
-            }
-
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.toString() == getString(defaultOptionStringId)) {
-                    dateField.tag = null
-                    when (loyaltyCardField) {
-                        LoyaltyCardField.validFrom -> viewModel.setValidFrom(null)
-                        LoyaltyCardField.expiry -> viewModel.setExpiry(null)
-                        else -> throw AssertionError("Unexpected field: $loyaltyCardField")
-                    }
-                } else if (s.toString() == getString(chooseDateOptionStringId)) {
-                    if (lastValue != getString(chooseDateOptionStringId)) {
-                        dateField.setText(lastValue)
-                    }
-                    showDatePicker(
-                        loyaltyCardField,
-                        dateField.tag as? Date,
-                        if (loyaltyCardField == LoyaltyCardField.expiry) binding.validFromField.tag as? Date else null,// if the expiry date is being set, set date picker's minDate to the 'valid from' date
-                        if (loyaltyCardField == LoyaltyCardField.validFrom) binding.expiryField.tag as? Date else null // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
-                    )
-                }
-            }
-
             override fun afterTextChanged(s: Editable?) {
                 dateField.setAdapter(createDropdownAdapter(
                     listOf(getString(defaultOptionStringId), getString(chooseDateOptionStringId))
@@ -1097,8 +1173,8 @@ class LoyaltyCardEditActivity : CatimaAppCompatActivity(), BarcodeImageWriterRes
             }
         }
 
-        if (!validBalance) {
-            binding.balanceField.error = getString(R.string.balanceParsingFailed)
+        // Check if balance field has a validation error
+        if (binding.balanceField.error != null) {
             if (!hasError) {
                 viewModel.selectTab(1)
                 binding.balanceField.requestFocus()

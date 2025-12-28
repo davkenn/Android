@@ -150,6 +150,19 @@ class LoyaltyCardEditActivityViewModel(
     private val _fieldErrorEvents = MutableSharedFlow<Pair<LoyaltyCardField, Int?>>(replay = 0)
     val fieldErrorEvents = _fieldErrorEvents.asSharedFlow()
 
+    // Field state for reactive validation and idempotency
+    private val _storeName = MutableStateFlow("")
+    val storeName = _storeName.asStateFlow()
+
+    private val _cardId = MutableStateFlow("")
+    val cardId = _cardId.asStateFlow()
+
+    private val _balance = MutableStateFlow<BigDecimal?>(null)
+    val balance = _balance.asStateFlow()
+
+    private val _balanceType = MutableStateFlow<Currency?>(null)
+    val balanceType = _balanceType.asStateFlow()
+
     var tempStoredOldBarcodeValue: String? = null
 
     var initDone = false
@@ -404,11 +417,29 @@ class LoyaltyCardEditActivityViewModel(
         }
     }
 
+    /**
+     * Initialize field StateFlows from a LoyaltyCard without triggering hasChanged.
+     * Used during UI restoration to populate reactive fields.
+     */
+    fun initializeFromCard(card: LoyaltyCard) {
+        Log.d(TAG, "initializeFromCard: store='${card.store}', cardId='${card.cardId}', balance=${card.balance}")
+        _storeName.value = card.store
+        _cardId.value = card.cardId ?: ""
+        _balance.value = card.balance
+        _balanceType.value = card.balanceType
+    }
+
     private inline fun modifyCard(block: LoyaltyCard.() -> Unit) {
-        if (onRestoring) return
+        if (onRestoring) {
+            Log.d("ViewModel", "modifyCard SKIPPED - onRestoring=true")
+            return
+        }
 
         val state = _cardState.value
         if (state is CardLoadState.Success) {
+            Log.d("ViewModel", "=== modifyCard EMITTING STATE === Stack trace:")
+            Log.d("ViewModel", Thread.currentThread().stackTrace.take(10).joinToString("\n"))
+
             state.loyaltyCard.block()
             hasChanged = true
             _cardState.value = state.copy(version = System.currentTimeMillis())
@@ -425,18 +456,27 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     fun onStoreNameChanged(newName: String) {
-        modifyCard { store = newName.trim() }
-        refreshThumbnailState()
+        val trimmed = newName.trim()
+        // Only update if value actually changed (idempotency prevents loops)
+        if (_storeName.value != trimmed) {
+            _storeName.value = trimmed
+            modifyCard { store = trimmed }
+            refreshThumbnailState()
+        }
     }
 
     fun onNoteChanged(newNote: String) = modifyCard { note = newNote }
 
     fun onCardIdChanged(newCardId: String) {
-        modifyCard {
-            if (barcodeId == null || barcodeId == cardId) {
-                barcodeId = newCardId
+        // Only update if value actually changed (idempotency prevents loops)
+        if (_cardId.value != newCardId) {
+            _cardId.value = newCardId
+            modifyCard {
+                if (barcodeId == null || barcodeId == cardId) {
+                    barcodeId = newCardId
+                }
+                cardId = newCardId
             }
-            cardId = newCardId
         }
     }
 
@@ -462,8 +502,22 @@ class LoyaltyCardEditActivityViewModel(
 
     fun setValidFrom(validFrom: Date?) = modifyCard { setValidFrom(validFrom) }
     fun setExpiry(expiry: Date?) = modifyCard { setExpiry(expiry) }
-    fun setBalance(balance: BigDecimal) = modifyCard { setBalance(balance) }
-    fun setBalanceType(balanceType: Currency?) = modifyCard { setBalanceType(balanceType) }
+
+    fun setBalance(balance: BigDecimal) {
+        // Only update if value actually changed (idempotency prevents loops)
+        if (_balance.value != balance) {
+            _balance.value = balance
+            modifyCard { setBalance(balance) }
+        }
+    }
+
+    fun setBalanceType(balanceType: Currency?) {
+        // Only update if value actually changed (idempotency prevents loops)
+        if (_balanceType.value != balanceType) {
+            _balanceType.value = balanceType
+            modifyCard { setBalanceType(balanceType) }
+        }
+    }
 
     /**
      * Handles balance currency field changes.
@@ -490,14 +544,29 @@ class LoyaltyCardEditActivityViewModel(
     }
 
     fun validateBalanceChanged(balanceString: String) {
-        if (onRestoring) return
+        Log.d("ViewModel", "validateBalanceChanged called: '$balanceString', onRestoring=$onRestoring")
+
+        if (onRestoring) {
+            Log.d("ViewModel", "validateBalanceChanged SKIPPED - onRestoring=true")
+            return
+        }
 
         viewModelScope.launch {
             try {
+                // Empty string means balance is 0 (handles focus loss on empty field)
+                if (balanceString.trim().isEmpty()) {
+                    Log.d("ViewModel", "Empty balance string -> setting to 0")
+                    setBalance(BigDecimal.ZERO)
+                    _fieldErrorEvents.emit(LoyaltyCardField.balance to null)
+                    return@launch
+                }
+
                 val balance = Utils.parseBalance(balanceString, loyaltyCard.balanceType)
+                Log.d("ViewModel", "Parsed balance: $balance")
                 setBalance(balance)
                 _fieldErrorEvents.emit(LoyaltyCardField.balance to null)
             } catch (e: ParseException) {
+                Log.d("ViewModel", "Balance parsing failed: ${e.message}")
                 _fieldErrorEvents.emit(LoyaltyCardField.balance to R.string.balanceParsingFailed)
             }
         }
