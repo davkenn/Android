@@ -80,6 +80,9 @@ sealed interface UiEvent {
 
     /** Request Activity to reformat balance field with new currency format */
     data class ReformatBalance(val balance: BigDecimal?, val balanceType: Currency?) : UiEvent
+
+    /** Request Activity to show the custom barcode ID dialog */
+    object ShowCustomBarcodeDialog : UiEvent
 }
 
 /**
@@ -508,6 +511,43 @@ class LoyaltyCardEditActivityViewModel(
         if (barcodeId.isNullOrEmpty() && state is CardLoadState.Success && state.loyaltyCard.barcodeType == null) {
             updateBarcodeState(BarcodeState.None)
         }
+    }
+
+    /**
+     * Handles barcode ID field changes from dropdown/text input.
+     * Detects menu options ("Same as Card ID", "Set custom...") and handles appropriately.
+     *
+     * @return true if the value was a menu option (Activity should not process further),
+     *         false if it was an actual barcode value
+     */
+    fun onBarcodeIdFieldChanged(value: String): Boolean {
+        val sameAsCardId = application.getString(R.string.sameAsCardId)
+        val setCustom = application.getString(R.string.setBarcodeId)
+
+        return when (value) {
+            sameAsCardId -> {
+                tempStoredOldBarcodeValue = null
+                setBarcodeId(null)
+                true
+            }
+            setCustom -> {
+                viewModelScope.launch {
+                    _uiEvents.emit(UiEvent.ShowCustomBarcodeDialog)
+                }
+                true
+            }
+            else -> {
+                setBarcodeId(value)
+                false
+            }
+        }
+    }
+
+    /**
+     * Called when user confirms custom barcode ID from the dialog.
+     */
+    fun onCustomBarcodeIdConfirmed() {
+        tempStoredOldBarcodeValue = null
     }
 
     fun setBarcodeType(barcodeType: CatimaBarcode?) {
